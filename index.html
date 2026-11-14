@@ -267,7 +267,7 @@ function applyOverride(j){
   if(j.programmes)Object.entries(j.programmes).forEach(([k,v])=>{if(v===null)delete PROGS[k];else PROGS[k]=Object.assign(PROGS[k]||{},v)});
   overrideNote=j.message||'';
 }
-function tokExp(){const c=S.get('connTest',null);if(c&&c.exp)return new Date(c.exp);const d=S.get('tokDate',null);return d?new Date(d+366*864e5):null}
+function tokExp(){if(S.get('tokNoExp',false))return null;const c=S.get('connTest',null);if(c&&c.exp)return new Date(c.exp);const d=S.get('tokDate',null);return d?new Date(d+366*864e5):null}
 function syncLine(){
   let col,txt;const pend=pending();const exp=tokExp();const days=exp?Math.round((exp-Date.now())/864e5):null;
   if(!tok()){col='#e07a62';txt='Non connecté à GitHub · touche pour configurer'}
@@ -496,6 +496,7 @@ function settings(){
   <div class="card"><h3>Token GitHub</h3>
   <p style="font-size:13px;color:var(--muted);line-height:1.5">Token « fine-grained » avec accès <b>Contents : Read and write</b> sur le seul dépôt <b>${GH.repo}</b>. Il reste stocké sur ce téléphone.</p>
   <div style="height:10px"></div><input type="password" id="tk" placeholder="github_pat_…" value="${tok()?'••••••••':''}">
+  <div class="lbl">Expiration du token</div><div class="chips" id="tkExp" style="margin-top:0"><button data-v="1" class="${S.get('tokNoExp',false)?'on':''}">Aucune</button><button data-v="0" class="${S.get('tokNoExp',false)?'':'on'}">1 an</button></div>
   <div class="chips" style="margin-top:10px"><button id="tkSave" class="on">Enregistrer</button><button id="syncNow">Synchroniser maintenant</button>${tok()?'<button id="tkDel">Supprimer le token</button>':''}</div>
   </div>
   <div class="card"><h3>État de la connexion</h3>${syncLine()}
@@ -504,6 +505,7 @@ function settings(){
   <div class="card"><h3>Données</h3><p style="font-size:13px;color:var(--muted);line-height:1.5">${S.get('hist',[]).length} séances, ${S.get('suivi',[]).length} jours de suivi et ${S.get('poids',[]).filter(x=>!x.supprime).length} pesées, ${S.get('cuisses',[]).filter(x=>!x.supprime).length} mesures de cuisses et ${S.get('tests',[]).filter(x=>!x.supprime).length} tests enregistrés. Fichier : <b>${GH.repo}/${GH.file}</b>.</p></div>`;
   app.querySelector('#tkSave').onclick=()=>{const v=app.querySelector('#tk').value.trim();if(v&&!v.startsWith('•')){S.set('ghToken',v);S.set('tokDate',Date.now());S.set('connTest',null);settings();testConn()}};
   app.querySelector('#tConn').onclick=testConn;
+  app.querySelectorAll('#tkExp button').forEach(b=>b.onclick=()=>{S.set('tokNoExp',b.dataset.v==='1');settings()});
   app.querySelector('#syncNow').onclick=()=>sync(true).then(()=>{if(tab==='set')settings()});
   const del=app.querySelector('#tkDel');if(del)del.onclick=()=>{S.set('ghToken','');S.set('connTest',null);settings()};
 }
