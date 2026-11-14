@@ -147,6 +147,11 @@ textarea{min-height:70px;resize:vertical}
 .pfig.sm{max-width:240px;opacity:.85}
 .pmain .ring{width:190px;height:190px;margin:14px auto}
 .pmain .ring svg{width:190px;height:190px}
+.rateq{margin-top:14px;font-size:15px;color:var(--muted)}
+.rateq .chips{margin-top:8px}
+@media print{body.printing .wrap,body.printing .tabs,body.printing #player,body.printing .noprint{display:none!important}
+body.printing{background:#fff!important;color:#000}body.printing .modal{position:static;background:none}body.printing .sheet{max-height:none;box-shadow:none;background:#fff;color:#000}
+body.printing .sheet *{color:#000!important;background:none!important;border-color:#999!important}}
 </style>
 </head>
 <body>
@@ -212,6 +217,9 @@ const PROGS={
     ['tapis',[1,1],[300,300],0],['quadset',[1,2],[10,10],20],['slr',[2,3],[10,12],30],['pont',[2,3],[12,15],45],['rowing',[2,3],[12,15],45],
     ['birddog',[2,3],[8,10],30],['tke',[2,3],[15,15],30],['abd',[2,3],[12,15],20],['planche',[2,3],[20,40],45],['pallof',[2,3],[10,10],20],
     ['squat',[2,3],[8,12],60],['tapis',[1,1],[180,300],0]]},
+  irritable:{n:"Genou irritable",z:'knee',l:"✚",douce:true,d:"Très doux : statique, hanches et dos, sans charge sur le genou",items:[
+    ['quadset',[2,2],[10,10],15],['slr',[2,2],[8,10],30],['heelslide',[1,1],[8,8],15],['clam',[2,2],[10,12],20],
+    ['abd',[2,2],[10,12],20],['deadbug',[2,2],[6,8],30],['pullapart',[2,2],[12,15],30]]},
   cardio:{n:"Cardio doux",z:'cardio',l:"♥",d:"Tapis surtout, rameur en course courte",items:[
     ['tapis',[1,1],[300,300],0],['tapisInc',[1,1],[600,900],0],['rameurInt',[0,4],[60,60],60],['tapis',[1,1],[180,180],0]]},
 };
@@ -232,7 +240,9 @@ function toast(t){let e=document.querySelector('.toast');if(!e){e=document.creat
 function mergeById(a,b){const m={};[...a,...b].forEach(x=>{if(x&&x.id)m[x.id]=Object.assign(m[x.id]||{},x)});return Object.values(m).sort((x,y)=>(x.date||'').localeCompare(y.date||''))}
 let syncing=false;
 const KEYS=[['seances','hist'],['suivi','suivi'],['poids','poids'],['cuisses','cuisses'],['tests','tests']];
-function localHash(){return JSON.stringify([...KEYS.map(([,l])=>S.get(l,[])),S.get('taille',null)])}
+const SC=[['taille_cm','taille'],['annee_naissance','naissance'],['questions_kine','questions'],['ajustements','ajust']];
+function setSc(l,v){S.set(l,v);S.set('maj_'+l,Date.now())}
+function localHash(){return JSON.stringify([...KEYS.map(([,l])=>S.get(l,[])),...SC.map(([,l])=>S.get(l,null))])}
 function pending(){return localHash()!==S.get('syncedHash','')}
 function ghErr(st){return st===401?"Token invalide ou expiré : crée-en un nouveau (Réglages)":st===403?"Le token n'a pas le droit d'écrire : mets Contents sur « Read and write »":st===404?`Le token n'a pas accès au dépôt ${GH.repo} : vérifie « Repository access »`:st===0?'Pas de réseau':'Erreur GitHub '+st}
 async function sync(manual){
@@ -245,15 +255,15 @@ async function sync(manual){
     else if(r.status!==404)throw new Error(ghErr(r.status));
     const merged={app:'Renfo genou & dos',profil:'Fissure complexe ménisque interne droit, non opéré, suivi kiné (vendredi)',maj:new Date().toISOString()};
     KEYS.forEach(([r,l])=>merged[r]=mergeById(remote[r]||[],S.get(l,[])));
-    merged.taille_cm=S.get('taille',null)||remote.taille_cm||null;
-    const pick=o=>JSON.stringify([...KEYS.map(([r])=>o[r]||[]),o.taille_cm||null]);const changed=pick(remote)!==pick(merged);
+    SC.forEach(([r,l])=>{const lm=S.get('maj_'+l,0),rm=remote[r+'_maj']||0;merged[r]=rm>lm?remote[r]:(S.get(l,null)??remote[r]??null);merged[r+'_maj']=Math.max(lm,rm)});
+    const pick=o=>JSON.stringify([...KEYS.map(([r])=>o[r]||[]),...SC.map(([r])=>o[r]??null)]);const changed=pick(remote)!==pick(merged);
     if(changed||!sha){
       const body={message:'séances '+new Date().toISOString().slice(0,16),content:b64e(JSON.stringify(merged,null,1)),branch:GH.branch};if(sha)body.sha=sha;
       const p=await fetch(url(GH.file),{method:'PUT',headers:hdr(),body:JSON.stringify(body)});
       if(p.status===409){syncing=false;return sync(manual)}
       if(!p.ok)throw new Error(ghErr(p.status));
     }
-    KEYS.forEach(([r,l])=>S.set(l,merged[r]));if(merged.taille_cm)S.set('taille',merged.taille_cm);
+    KEYS.forEach(([r,l])=>S.set(l,merged[r]));SC.forEach(([r,l])=>{S.set(l,merged[r]);S.set('maj_'+l,merged[r+'_maj'])});
     S.set('syncedHash',localHash());syncState={ok:Date.now()};S.set('syncState',syncState);
     await loadProgramme();
     if(manual)toast('Synchronisé ✓');
@@ -322,11 +332,15 @@ function home(){
   ${overrideNote?`<div class="men" style="margin-top:16px"><b>Ajustement du programme :</b> ${overrideNote}</div>`:''}
   ${remindCards()}
   ${dailyCard()}
+  ${progCard()}
   <h2>Choisis ta séance</h2>
-  ${Object.entries(PROGS).map(([k,p])=>`<button class="prog" data-p="${k}"><div class="dot" style="background:${C[p.z]}">${p.l}</div><div><h3>${p.n}</h3><p>${p.d}<br>≈ ${estMin(p)} min · ${p.items.filter(x=>x[1][level]).length} exercices</p></div><span class="go">›</span></button>`).join('')}
+  ${Object.entries(PROGS).filter(([,p])=>!p.douce).map(([k,p])=>`<button class="prog" data-p="${k}"><div class="dot" style="background:${C[p.z]}">${p.l}</div><div><h3>${p.n}</h3><p>${p.d}<br>≈ ${estMin(p)} min · ${p.items.filter(x=>x[1][level]).length} exercices</p></div><span class="go">›</span></button>`).join('')}
+  <h2>Jour difficile</h2>
+  ${Object.entries(PROGS).filter(([,p])=>p.douce).map(([k,p])=>`<button class="prog" data-p="${k}"><div class="dot" style="background:${C[p.z]}">${p.l}</div><div><h3>${p.n}</h3><p>${p.d}<br>≈ ${estMin(p)} min</p></div><span class="go">›</span></button>`).join('')}
   <div class="note"><b>Règles pour ton ménisque</b><br>• Genou chargé : jamais au-delà de 60–70° de flexion (pas de squat profond, pas de fente, ne pas s'accroupir).<br>• Pas de rotation du genou quand le pied est au sol.<br>• Pas d'impact : ni course ni sauts pour l'instant.<br>• Une gêne ≤ 3/10 qui disparaît en 24 h, c'est acceptable.<br><br><b>Rythme :</b> 3 séances par semaine, en alternant Genou, Dos et Complète, plus de la marche quand tu veux.<br><b>Phase 2</b> seulement quand, depuis 2 semaines : pas de gonflement après les séances, genou qui se tend complètement, marche normale et douleur ≤ 2/10.<br><br>Cette appli ne remplace pas un kiné. Pour une fissure complexe, fais valider le programme par lui ou par ton chirurgien. Si tu es opéré, suis le protocole post-opératoire qu'on te donne.</div>`;
   app.querySelector('#alertBtn').onclick=alertSheet;
   bindDaily();
+  bindProg();
   const rk=app.querySelector('#rKine');if(rk)rk.onclick=()=>manualForm('kine');
   const rt=app.querySelector('#rTest');if(rt)rt.onclick=()=>{tab='poids';S.set('mtab','tests');render()};
   app.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{level=+b.dataset.l;S.set('lvl',level);home()});
@@ -334,13 +348,18 @@ function home(){
 }
 function dailyCard(){
   const d=S.get('suivi',[]).find(x=>x.jour===today())||{};
-  return `<div class="card"><h3>Mon genou aujourd'hui</h3>
+  return `<div class="card"><h3>Mon genou et mon dos aujourd'hui</h3>
   <div class="lbl">Douleur au repos / dans la journée</div>
   <div class="scale" id="dPain">${[...Array(11)].map((_,i)=>`<button data-v="${i}" class="${d.douleur===i?'on':''}">${i}</button>`).join('')}</div>
   <div class="lbl">Gonflement</div>
   <div class="chips" id="dSw">${['aucun','léger','net'].map(v=>`<button data-v="${v}" class="${d.gonflement===v?'on':''}">${v}</button>`).join('')}</div>
   <div class="lbl">Symptômes</div>
   <div class="chips" id="dSy">${['blocage','dérobement','raideur matin'].map(v=>`<button data-v="${v}" class="${(d.symptomes||[]).includes(v)?'on':''}">${v}</button>`).join('')}</div>
+  <div class="lbl" style="margin-top:16px">Dos : douleur</div>
+  <div class="scale" id="dBack">${[...Array(11)].map((_,i)=>`<button data-v="${i}" class="${d.dos===i?'on':''}">${i}</button>`).join('')}</div>
+  <div class="chips" id="dBz">${['lombaires','haut du dos','descend dans la jambe'].map(v=>`<button data-v="${v}" class="${(d.dos_zone||[]).includes(v)?'on':''}">${v}</button>`).join('')}</div>
+  ${(d.dos_zone||[]).includes('descend dans la jambe')?'<div class="men" style="margin-top:12px">Si la douleur descend sous le genou, ou s’accompagne de fourmillements ou d’une faiblesse de la jambe, parles-en à ton médecin.</div>':''}
+  ${!(d.gonflement==='net'||(d.symptomes||[]).some(x=>x!=='raideur matin'))&&(d.gonflement==='léger'||d.douleur>=4)?'<button class="prog" id="goSoft" style="margin:14px 0 0"><div class="dot" style="background:var(--knee)">✚</div><div><h3>Genou irritable aujourd’hui</h3><p>Remplace ta séance par la version douce (≈ 15 min).</p></div><span class="go">›</span></button>':''}
   ${d.gonflement==='net'||(d.symptomes||[]).some(x=>x!=='raideur matin')?'<div class="men" style="margin-top:12px">⚠ Pas de séance genou aujourd’hui : préviens ton kiné, surtout en cas de blocage ou de dérobement.</div>':''}
   </div>`;
 }
@@ -352,6 +371,9 @@ function setDaily(patch){
 function bindDaily(){
   app.querySelectorAll('#dPain button').forEach(b=>b.onclick=()=>setDaily({douleur:+b.dataset.v}));
   app.querySelectorAll('#dSw button').forEach(b=>b.onclick=()=>setDaily({gonflement:b.dataset.v}));
+  app.querySelectorAll('#dBack button').forEach(b=>b.onclick=()=>setDaily({dos:+b.dataset.v}));
+  app.querySelectorAll('#dBz button').forEach(b=>b.onclick=()=>{const d=S.get('suivi',[]).find(x=>x.jour===today())||{};let z=d.dos_zone||[];z=z.includes(b.dataset.v)?z.filter(x=>x!==b.dataset.v):[...z,b.dataset.v];setDaily({dos_zone:z})});
+  const gs=app.querySelector('#goSoft');if(gs)gs.onclick=()=>start('irritable');
   app.querySelectorAll('#dSy button').forEach(b=>b.onclick=()=>{const d=S.get('suivi',[]).find(x=>x.jour===today())||{};let s=d.symptomes||[];s=s.includes(b.dataset.v)?s.filter(x=>x!==b.dataset.v):[...s,b.dataset.v];setDaily({symptomes:s})});
 }
 function imc(kg){const t=S.get('taille',null);return t&&kg?kg/Math.pow(t/100,2):null}
@@ -392,7 +414,7 @@ function poids(){
     if(e){e.kg=kg;e.supprime=false;e.date=new Date().toISOString()}else arr.push({id,jour:j,kg,date:new Date().toISOString()});
     S.set('poids',arr);toast('Pesée enregistrée');poids();sync();
   };
-  const ts=app.querySelector('#tSave');if(ts)ts.onclick=()=>{const v=parseFloat(app.querySelector('#tcm').value.replace(',','.'));if(!(v>100&&v<230)){toast('Taille invalide (en cm)');return}S.set('taille',Math.round(v));poids();sync()};
+  const ts=app.querySelector('#tSave');if(ts)ts.onclick=()=>{const v=parseFloat(app.querySelector('#tcm').value.replace(',','.'));if(!(v>100&&v<230)){toast('Taille invalide (en cm)');return}setSc('taille',Math.round(v));poids();sync()};
   const te=app.querySelector('#tEdit');if(te)te.onclick=()=>{app.querySelector('#tBox').style.display='flex'};
   app.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const arr=S.get('poids',[]);const e=arr.find(x=>x.id===b.dataset.del);if(e){e.supprime=true;e.date=new Date().toISOString()}S.set('poids',arr);poids();sync()});
 }
@@ -438,9 +460,11 @@ function cuisses(){
 const TESTS=[
   {k:'assis30',n:"Assis-debout en 30 s",u:'reps',d:"Même chaise haute que d'habitude, bras croisés sur la poitrine. Compte le nombre de levers complets en 30 secondes.",chrono:30},
   {k:'chaise_s',n:"Chaise contre le mur (30–45°)",u:'s',d:"Même angle que pendant les séances. Tiens le plus longtemps possible, arrête dès que la douleur dépasse 3/10. Maximum 120 s.",chrono:0},
-  {k:'equi_d_s',n:"Équilibre jambe droite",u:'s',d:"Yeux ouverts, mains sur les hanches, genou légèrement déverrouillé. Arrête quand l'autre pied touche le sol. Maximum 60 s.",chrono:0},
-  {k:'equi_g_s',n:"Équilibre jambe gauche",u:'s',d:"Même consigne, pour comparer avec la droite. Maximum 60 s.",chrono:0},
+  {k:'equi_d_s',n:"Équilibre jambe droite",u:'s',d:"Yeux ouverts, mains sur les hanches, genou légèrement déverrouillé. Arrête quand l'autre pied touche le sol. Garde le meilleur de 3 essais, maximum 45 s.",chrono:0},
+  {k:'equi_g_s',n:"Équilibre jambe gauche",u:'s',d:"Même consigne (meilleur de 3 essais, max 45 s), pour comparer avec la droite.",chrono:0},
 ];
+function age(){const y=S.get('naissance',null);return y?new Date().getFullYear()-y:null}
+function equiNorm(){const a=age();if(a==null)return null;return a<40?45:a<50?42:a<60?41:a<70?32:a<80?22:9}
 function lastTest(){const t=S.get('tests',[]).filter(x=>!x.supprime).sort((a,b)=>a.jour.localeCompare(b.jour));return t[t.length-1]}
 let chronoT=null;
 function tests(){
@@ -450,6 +474,7 @@ function tests(){
   <div class="card"><h3>${due?'Test du mois à faire':'Prochain test'}</h3><p style="font-size:14px;color:var(--muted);line-height:1.5">${last?`Dernier test le ${dl(last.jour)}. `:''}${due?'Fais ces 4 tests en début de séance, après 5 min de marche.':`À refaire vers le ${dl(new Date(new Date(last.jour+'T12:00').getTime()+28*864e5).toISOString().slice(0,10))}.`}</p></div>
   <div class="card"><h3>Chrono</h3><div style="display:flex;align-items:center;gap:12px"><b id="chv" style="font-family:Cinzel,serif;font-size:34px;color:var(--gold2);min-width:90px">0</b><div class="chips" style="margin:0"><button id="ch30">30 s</button><button id="chGo">Démarrer</button><button id="chStop">Stop</button></div></div></div>
   ${TESTS.map(t=>`<div class="card"><h3>${t.n}</h3><p style="font-size:14px;color:var(--muted);line-height:1.45">${t.d}</p>
+    ${t.k.startsWith('equi')&&equiNorm()?`<p style="font-size:13px;color:var(--gold);margin-top:6px">Moyenne pour ton âge (${age()} ans) : environ ${equiNorm()} s</p>`:''}
     <div class="wrow" style="margin-top:10px"><input type="text" inputmode="numeric" id="t_${t.k}" placeholder="${t.u==='s'?'secondes':'répétitions'}"><span style="color:var(--muted);font-size:14px;min-width:120px">${last&&last[t.k]!=null?`dernier : ${last[t.k]}${t.u==='s'?' s':''}${prev&&prev[t.k]!=null?` (${last[t.k]-prev[t.k]>=0?'+':''}${last[t.k]-prev[t.k]})`:''}`:''}</span></div></div>`).join('')}
   <div class="card"><div class="lbl" style="margin-top:0">Douleur pendant les tests</div><div class="scale" id="tPain">${[...Array(11)].map((_,i)=>`<button data-v="${i}">${i}</button>`).join('')}</div>
   <div class="chips" style="margin-top:14px"><button id="tSaveT" class="on">Enregistrer les résultats</button></div></div>
@@ -464,6 +489,32 @@ function tests(){
     if(!n){toast('Entre au moins un résultat');return}const arr=S.get('tests',[]);const e=arr.find(x=>x.id===rec.id);e?Object.assign(e,rec):arr.push(rec);S.set('tests',arr);stopC();toast('Tests enregistrés');tests();sync()};
   app.querySelectorAll('[data-delt]').forEach(b=>b.onclick=()=>{const arr=S.get('tests',[]);const e=arr.find(x=>x.id===b.dataset.delt);if(e){e.supprime=true;e.date=new Date().toISOString()}S.set('tests',arr);tests();sync()});
 }
+function progSuggest(){
+  const aj=S.get('ajust',null)||{};const h=S.get('hist',[]).filter(x=>!x.supprime&&!x.manuel&&x.prog!=='irritable').sort((a,b)=>b.date.localeCompare(a.date));
+  const out=[];const seen=new Set();
+  h.forEach(se=>(se.exercices||[]).forEach(e=>seen.add(e.id)));
+  seen.forEach(id=>{const ex=EX[id];if(!ex||ex.z==='cardio')return;const a=aj[id]||{};
+    const recs=[];h.forEach(se=>{if(a.vu&&se.date<=a.vu)return;const e=(se.exercices||[]).find(x=>x.id===id&&x.ressenti);if(e)recs.push({e,se})});
+    if(recs.length<2)return;const [r1,r2]=recs;
+    const easy=r1.e.ressenti==='facile'&&r2.e.ressenti==='facile'&&!r1.e.douleur&&!r2.e.douleur&&(r1.se.douleur??0)<=2&&(r2.se.douleur??0)<=2;
+    const hard=(r1.e.ressenti==='dur'&&r2.e.ressenti==='dur')||(r1.e.douleur&&r2.e.douleur);
+    const t=ex.t==='time';
+    if(easy){const d=a.d||0;if(t?d<30:d<6)out.push({id,dir:1,ch:t?{d:d+10}:{d:d+2},txt:t?'+10 secondes':'+2 répétitions'});else if(!(a.s>0))out.push({id,dir:1,ch:{s:1},txt:'+1 série'})}
+    else if(hard){if(a.s>0)out.push({id,dir:-1,ch:{s:0},txt:'−1 série'});else out.push({id,dir:-1,ch:{d:(a.d||0)-(t?10:2)},txt:t?'−10 secondes':'−2 répétitions'})}
+  });
+  return out;
+}
+function progCard(){
+  const sg=progSuggest();if(!sg.length)return '';
+  return `<div class="card"><h3>⚜ Progression proposée</h3><p style="font-size:14px;color:var(--muted);line-height:1.45;margin-bottom:6px">D'après tes deux dernières séances (ressenti et douleur).</p>
+  ${sg.map((x,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)"><div style="flex:1"><b>${EX[x.id].n}</b><br><span style="color:${x.dir>0?'#7fbf6a':'#e0a85a'};font-size:14px">${x.txt}</span>${x.dir>0?'':' <span style="font-size:13px;color:var(--muted)">(trop dur ou douloureux)</span>'}</div><div class="chips" style="margin:0"><button data-ok="${i}" class="on">Valider</button><button data-no="${i}">Pas encore</button></div></div>`).join('')}</div>`;
+}
+function bindProg(){
+  const sg=progSuggest();const now=new Date().toISOString();
+  const upd=(x,acc)=>{const aj=Object.assign({},S.get('ajust',null)||{});const a=Object.assign({},aj[x.id]||{});if(acc)Object.assign(a,x.ch);a.vu=now;aj[x.id]=a;setSc('ajust',aj);toast(acc?'Programme ajusté':'Proposition écartée');home();sync()};
+  app.querySelectorAll('[data-ok]').forEach(b=>b.onclick=()=>upd(sg[+b.dataset.ok],true));
+  app.querySelectorAll('[data-no]').forEach(b=>b.onclick=()=>upd(sg[+b.dataset.no],false));
+}
 function remindCards(){
   let out='';const d=new Date();const h=S.get('hist',[]).filter(x=>!x.supprime);
   const kineDone=h.some(x=>x.prog==='kine'&&(x.jour||x.date.slice(0,10))===today());
@@ -472,6 +523,64 @@ function remindCards(){
   return out;
 }
 const MTYPES={kine:'Kiné',libre:'Séance libre',marche:'Marche',rameur:'Rameur',autre:'Autre'};
+function bilanData(){
+  const now=Date.now(),D=864e5,from=now-28*D,mid=now-14*D;const iso=t=>new Date(t).toISOString();
+  const H=S.get('hist',[]).filter(x=>!x.supprime&&new Date(x.date).getTime()>=from);
+  const app_=H.filter(x=>!x.manuel),kine=H.filter(x=>x.prog==='kine');
+  const avg=a=>{a=a.filter(v=>v!=null);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null};
+  const f1=v=>v==null?'–':v.toFixed(1).replace('.',',');
+  const su=S.get('suivi',[]).filter(x=>new Date(x.jour+'T12:00').getTime()>=from);
+  const ex={};app_.forEach(se=>(se.exercices||[]).forEach(e=>{const o=ex[e.id]=ex[e.id]||{nom:e.nom,n:0,f:0,p:0,dou:0,r:{}};o.n++;o.f+=e.series_faites;o.p+=e.series_prevues;if(e.douleur)o.dou++;if(e.ressenti)o.r[e.ressenti]=(o.r[e.ressenti]||0)+1}));
+  const sym=su.filter(x=>(x.symptomes||[]).some(s=>s!=='raideur matin')).map(x=>`${dl(x.jour)} (${x.symptomes.filter(s=>s!=='raideur matin').join(', ')})`);
+  const pw=S.get('poids',[]).filter(x=>!x.supprime).sort((a,b)=>a.jour.localeCompare(b.jour));const pin=(d0,d1)=>avg(pw.filter(x=>{const t=new Date(x.jour+'T12:00').getTime();return t>d0&&t<=d1}).map(x=>x.kg));
+  const p7=pin(now-7*D,now),p28=pin(now-35*D,now-28*D);
+  const cu=S.get('cuisses',[]).filter(x=>!x.supprime).sort((a,b)=>a.jour.localeCompare(b.jour));
+  const te=S.get('tests',[]).filter(x=>!x.supprime).sort((a,b)=>a.jour.localeCompare(b.jour));
+  const zones={};su.forEach(x=>(x.dos_zone||[]).forEach(z=>zones[z]=(zones[z]||0)+1));
+  return {f1,avg,from,
+    nApp:app_.length,perW:app_.length/4,nKine:kine.length,min:Math.round(H.reduce((a,x)=>a+(x.duree_s||0),0)/60),
+    dS1:avg(app_.filter(x=>new Date(x.date).getTime()<mid).map(x=>x.douleur)),dS2:avg(app_.filter(x=>new Date(x.date).getTime()>=mid).map(x=>x.douleur)),
+    dJ1:avg(su.filter(x=>new Date(x.jour+'T12:00').getTime()<mid).map(x=>x.douleur)),dJ2:avg(su.filter(x=>new Date(x.jour+'T12:00').getTime()>=mid).map(x=>x.douleur)),
+    gL:su.filter(x=>x.gonflement==='léger').length,gN:su.filter(x=>x.gonflement==='net').length,sym,
+    dos:avg(su.map(x=>x.dos)),zones:Object.entries(zones).sort((a,b)=>b[1]-a[1]).map(([z,n])=>`${z} (${n} j)`),
+    ex:Object.values(ex).sort((a,b)=>b.n-a.n),
+    aj:Object.entries(S.get('ajust',null)||{}).filter(([id,a])=>EX[id]&&(a.d||a.s)).map(([id,a])=>`${EX[id].n} : ${a.d?(a.d>0?'+':'')+a.d+(EX[id].t==='time'?' s':' reps'):''}${a.s?' +'+a.s+' série':''}`),
+    p7,p28,imc:p7?imc(p7):null,cu:cu[cu.length-1],cu0:cu[0],te:te[te.length-1],te0:te[te.length-2],
+    consignes:kine.filter(x=>x.consignes).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,2).map(x=>`${dl((x.jour||x.date.slice(0,10)))} : ${x.consignes}`)};
+}
+function bilanText(b){
+  const L=[];const a=age();
+  L.push(`BILAN RENFO — 4 dernières semaines (depuis le ${dl(new Date(b.from).toISOString().slice(0,10))})`);
+  L.push(`Fissure complexe ménisque interne droit, non opérée${a?` · ${a} ans`:''} · phase ${level+1}`);
+  L.push('',`Séances : ${b.nApp} à domicile (${b.f1(b.perW)}/sem), ${b.nKine} kiné, ${b.min} min au total`);
+  L.push(`Douleur genou en séance : ${b.f1(b.dS1)} → ${b.f1(b.dS2)} /10 (sem. 1-2 → 3-4)`);
+  L.push(`Douleur genou au quotidien : ${b.f1(b.dJ1)} → ${b.f1(b.dJ2)} /10`);
+  L.push(`Gonflement : ${b.gL} j léger, ${b.gN} j net${b.sym.length?` · Symptômes : ${b.sym.join(' ; ')}`:' · Ni blocage ni dérobement'}`);
+  if(b.dos!=null)L.push(`Dos : douleur moyenne ${b.f1(b.dos)}/10${b.zones.length?` · ${b.zones.join(', ')}`:''}`);
+  if(b.ex.length){L.push('','Exercices (séances · séries faites · ressenti · douloureux) :');b.ex.forEach(e=>{const r=Object.entries(e.r).sort((x,y)=>y[1]-x[1])[0];L.push(`- ${e.nom} : ${e.n} · ${Math.round(e.f/e.p*100)} %${r?` · ${r[0]}`:''}${e.dou?` · douloureux ${e.dou}×`:''}`)})}
+  if(b.aj.length)L.push('',`Ajustements en cours : ${b.aj.join(' ; ')}`);
+  const m=[];if(b.cu)m.push(`Cuisses (${dl(b.cu.jour)}) : D ${b.cu.droite_cm} / G ${b.cu.gauche_cm} cm, écart ${(b.cu.droite_cm-b.cu.gauche_cm).toFixed(1)}${b.cu0&&b.cu0!==b.cu?` (${(b.cu0.droite_cm-b.cu0.gauche_cm).toFixed(1)} au départ)`:''}`);
+  if(b.te)m.push(`Tests (${dl(b.te.jour)}) : assis-debout 30 s ${b.te.assis30??'–'}${b.te0?` (avant ${b.te0.assis30??'–'})`:''} · mur ${b.te.chaise_s??'–'} s · équilibre D ${b.te.equi_d_s??'–'} s / G ${b.te.equi_g_s??'–'} s${equiNorm()?` (moyenne âge ≈ ${equiNorm()} s)`:''}`);
+  if(b.p7)m.push(`Poids : ${b.f1(b.p7)} kg (moy. 7 j)${b.p28?`, ${b.p7-b.p28>=0?'+':''}${b.f1(b.p7-b.p28)} kg en 4 sem.`:''}${b.imc?` · IMC ${b.f1(b.imc)}`:''}`);
+  if(m.length)L.push('',...m);
+  if(b.consignes.length)L.push('','Dernières consignes du kiné :',...b.consignes.map(x=>'- '+x));
+  const q=(S.get('questions','')||'').trim();if(q)L.push('','Questions :',q);
+  return L.join('\n');
+}
+function bilanKine(){
+  const b=bilanData();const m=document.createElement('div');m.className='modal';
+  const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  m.innerHTML=`<div class="sheet bilan"><h3>📜 Bilan pour le kiné</h3>
+  <div class="stats" style="margin-top:6px"><div class="stat"><b>${b.nApp}</b><span>séances maison</span></div><div class="stat"><b>${b.f1(b.dS2)}</b><span>douleur séances (2 sem.)</span></div><div class="stat"><b>${b.gL+b.gN}</b><span>jours gonflés</span></div></div>
+  <pre id="bTxt" style="white-space:pre-wrap;font-family:'EB Garamond',serif;font-size:15px;line-height:1.45;margin-top:14px;color:var(--ink)">${esc(bilanText(b))}</pre>
+  <div class="lbl">Questions à poser au kiné</div><textarea id="bQ" placeholder="ex. Puis-je reprendre le vélo ? Quand passer en phase 2 ?">${esc(S.get('questions','')||'')}</textarea>
+  <div class="chips noprint" style="margin-top:14px"><button id="bCopy" class="on">Copier le texte</button><button id="bPrint">Imprimer / PDF</button><button id="bClose">Fermer</button></div></div>`;
+  document.body.appendChild(m);
+  const q=m.querySelector('#bQ');q.oninput=()=>{setSc('questions',q.value);m.querySelector('#bTxt').textContent=bilanText(bilanData());clearTimeout(q._t);q._t=setTimeout(()=>sync(),2000)};
+  m.querySelector('#bCopy').onclick=async()=>{try{await navigator.clipboard.writeText(bilanText(bilanData()));toast('Bilan copié : colle-le dans un message')}catch(e){toast('Copie impossible : sélectionne le texte à la main')}};
+  m.querySelector('#bPrint').onclick=()=>{document.body.classList.add('printing');window.print();setTimeout(()=>document.body.classList.remove('printing'),500)};
+  m.querySelector('#bClose').onclick=()=>m.remove();m.onclick=e=>{if(e.target===m)m.remove()};
+}
 function manualForm(type,editId){
   const ex=editId?S.get('hist',[]).find(x=>x.id===editId):null;type=ex?ex.prog:type||'kine';
   const m=document.createElement('div');m.className='modal';
@@ -509,9 +618,13 @@ function settings(){
   <div class="card"><h3>État de la connexion</h3>${syncLine()}
   <div class="chips" style="margin-top:12px"><button id="tConn" class="on">Tester la connexion</button></div>
   <div id="ctest" style="margin-top:10px;font-size:14px;line-height:1.4">${lastTestHtml||(()=>{const c=S.get('connTest',null);return c?`<span style="color:var(--muted)">Dernier test le ${new Date(c.date).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})} : ${c.ok?'✅ tout fonctionnait':'❌ problème détecté'}</span>`:''})()}</div></div>
+  <div class="card"><h3>Profil</h3><div class="lbl" style="margin-top:0">Année de naissance</div>
+  <div class="wrow"><input type="text" inputmode="numeric" id="born" placeholder="ex. 1985" value="${S.get('naissance','')??''}"><div class="chips" style="margin:0"><button id="bornSave" class="on">OK</button></div></div>
+  <p style="font-size:13px;color:var(--muted);margin-top:8px">${age()!=null?`${age()} ans · `:''}Sert à comparer tes tests d'équilibre aux valeurs de ton âge, et figure sur le bilan kiné.</p></div>
   <div class="card"><h3>Données</h3><p style="font-size:13px;color:var(--muted);line-height:1.5">${S.get('hist',[]).length} séances, ${S.get('suivi',[]).length} jours de suivi et ${S.get('poids',[]).filter(x=>!x.supprime).length} pesées, ${S.get('cuisses',[]).filter(x=>!x.supprime).length} mesures de cuisses et ${S.get('tests',[]).filter(x=>!x.supprime).length} tests enregistrés. Fichier : <b>${GH.repo}/${GH.file}</b>.</p></div>`;
   app.querySelector('#tkSave').onclick=()=>{const v=app.querySelector('#tk').value.trim();if(v&&!v.startsWith('•')){S.set('ghToken',v);S.set('tokDate',Date.now());S.set('connTest',null);settings();testConn()}};
   app.querySelector('#tConn').onclick=testConn;
+  app.querySelector('#bornSave').onclick=()=>{const y=parseInt(app.querySelector('#born').value,10);const cy=new Date().getFullYear();if(!(y>cy-100&&y<cy-10)){toast('Année invalide');return}setSc('naissance',y);toast('Profil enregistré');settings();sync()};
   app.querySelectorAll('#tkExp button').forEach(b=>b.onclick=()=>{S.set('tokNoExp',b.dataset.v==='1');settings()});
   app.querySelector('#syncNow').onclick=()=>sync(true).then(()=>{if(tab==='set')settings()});
   const del=app.querySelector('#tkDel');if(del)del.onclick=()=>{S.set('ghToken','');S.set('connTest',null);settings()};
@@ -546,22 +659,24 @@ function lib(){
 function hist(){
   const h=S.get('hist',[]).filter(x=>!x.supprime).sort((a,b)=>b.date.localeCompare(a.date));
   app.innerHTML=`<h1>Historique</h1>${syncLine()}
-  <div class="chips" style="margin:16px 0"><button id="addKine" class="on">+ Séance kiné</button><button id="addOther">+ Autre activité</button></div>
+  <div class="chips" style="margin:16px 0"><button id="addKine" class="on">+ Séance kiné</button><button id="addOther">+ Autre activité</button><button id="bilanK">📜 Bilan pour le kiné</button></div>
   ${h.length?h.map(x=>`<details class="hist"><summary><div class="hrow"><div><b>${x.manuel&&x.prog==='kine'?'⚕ ':''}${x.programme||x.prog}</b>${x.manuel?'':` · Phase ${x.phase}`}${x.interrompue?' · <span style="color:var(--knee)">interrompue</span>':''}<small>${new Date(x.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</small></div><div style="text-align:right">${Math.round((x.duree_s||0)/60)} min<small>${x.douleur!=null?'douleur '+x.douleur+'/10':''}</small></div></div></summary>
   <div class="hdet">${(x.exercices||[]).map(e=>`${e.series_faites>=e.series_prevues?'✓':e.series_faites?'◐':'✕'} ${e.nom} — ${e.series_faites}/${e.series_prevues}${e.douleur?' · <span style="color:var(--knee)">douloureux</span>':''}`).join('<br>')}${x.contenu?`<b>Fait :</b> ${x.contenu}`:''}${x.consignes?`<br><b>Consignes :</b> ${x.consignes}`:''}${x.note?`<br><i>« ${x.note} »</i>`:''}${x.manuel?`<br><button data-edit="${x.id}" style="color:var(--gold);text-decoration:underline;font-size:13px;margin-top:6px">Modifier</button>`:''}</div></details>`).join(''):'<div class="empty">Pas encore de séance. Lance-toi !</div>'}`;
   app.querySelector('#addKine').onclick=()=>manualForm('kine');
   app.querySelector('#addOther').onclick=()=>manualForm('marche');
+  app.querySelector('#bilanK').onclick=bilanKine;
   app.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>manualForm(null,b.dataset.edit));
 }
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
 
 /* ---------- Lecteur de séance ---------- */
 const P=document.getElementById('player');
-let track={},painEx={},steps=[],idx=0,remain=0,total=0,running=false,tick=null,last=0,curProg=null,startT=0,ac=null,wl=null;
+let rate={},track={},painEx={},steps=[],idx=0,remain=0,total=0,running=false,tick=null,last=0,curProg=null,startT=0,ac=null,wl=null;
 function buildSteps(k){
   const out=[];const p=PROGS[k];
   const its=p.items.filter(x=>x[1][level]);its.forEach(([id,se,r,rest],bi)=>{
-    const e=EX[id];const n=se[level];const v=r[level];if(!n)return;
+    const e=EX[id];let n=se[level];let v=r[level];if(!n)return;
+    const aj=(S.get('ajust',null)||{})[id];if(aj&&PROGS[k]&&!PROGS[k].douce&&e.z!=='cardio'){n=Math.max(1,n+(aj.s||0));v=Math.max(e.t==='time'?10:3,v+(aj.d||0))}
     for(let s=1;s<=n;s++){
       out.push({kind:'work',id,e,set:s,sets:n,v,side:e.side,bi});
       const last=s===n&&bi===its.length-1;
@@ -574,7 +689,7 @@ function beep(f=880,d=.15){try{if(!ac)return;const o=ac.createOscillator(),g=ac.
 async function start(k){
   try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
   try{wl=await navigator.wakeLock?.request('screen')}catch(e){}
-  curProg=k;steps=buildSteps(k);idx=0;track={};painEx={};startT=Date.now();P.classList.add('show');load();
+  curProg=k;steps=buildSteps(k);idx=0;track={};painEx={};rate={};startT=Date.now();P.classList.add('show');load();
 }
 function isTimed(st){return st.kind==='rest'||st.e.t==='time'}
 function load(){
@@ -599,7 +714,8 @@ function draw(){
   const st=steps[idx];const pct=idx/steps.length*100;const nw=nextWork();
   let body;
   if(st.kind==='rest'){
-    body=`<div class="rest"><div class="phase">${st.label}</div><div class="pname">Récupère</div>${ring()}${nw?`<div class="next">Ensuite : <b>${nw.e.n}</b>${nw.sets>1?` · série ${nw.set}/${nw.sets}`:''}</div>${window.figureSVG?`<div class="figbox pfig sm">${figureSVG(nw.id)}</div>`:''}`:''}</div>`;
+    const pv=steps[idx-1];const ask=st.label==='Transition'&&pv&&pv.kind==='work';
+    body=`<div class="rest"><div class="phase">${st.label}</div><div class="pname">Récupère</div>${ring()}${ask?rateBox(pv.bi,pv.e.n):''}${nw?`<div class="next">Ensuite : <b>${nw.e.n}</b>${nw.sets>1?` · série ${nw.set}/${nw.sets}`:''}</div>${window.figureSVG?`<div class="figbox pfig sm">${figureSVG(nw.id)}</div>`:''}`:''}</div>`;
   }else{
     const e=st.e;const timed=e.t==='time';
     const unit=e.u||'reps';
@@ -621,6 +737,7 @@ function draw(){
   P.querySelector('#skip')&&(P.querySelector('#skip').onclick=next);
   P.querySelector('#ok')&&(P.querySelector('#ok').onclick=()=>{beep(990);markDone();next()});
   P.querySelector('#tog')&&(P.querySelector('#tog').onclick=()=>{running=!running;P.querySelector('#tog').textContent=running?'Pause':'Reprendre'});
+  bindRate(P);
   const hu=P.querySelector('#hurt');if(hu)hu.onclick=()=>{painEx[st.bi]=!painEx[st.bi];hu.style.background=painEx[st.bi]?'var(--knee)':'';hu.style.color=painEx[st.bi]?'#fff':'';toast(painEx[st.bi]?'Douleur notée sur cet exercice':'Douleur retirée')};
   updRing();
 }
@@ -634,20 +751,24 @@ function updRing(){
   if(st.kind==='work'&&st.side)ts.textContent=remain>total/2?'côté 1':'côté 2';
   else if(st.kind==='work'&&total>=120)ts.textContent='minutes';
 }
+function rateBox(bi,name){return `<div class="rateq">Comment était <b>${name}</b> ?<div class="chips" style="justify-content:center">${[['facile','Facile'],['correct','Correct'],['dur','Dur']].map(([v,l])=>`<button data-rate="${bi}:${v}" class="${rate[bi]===v?'on':''}">${l}</button>`).join('')}</div></div>`}
+function bindRate(root){root.querySelectorAll('[data-rate]').forEach(b=>b.onclick=()=>{const [bi,v]=b.dataset.rate.split(':');rate[bi]=v;root.querySelectorAll(`[data-rate^="${bi}:"]`).forEach(x=>x.classList.toggle('on',x===b))})}
 function markDone(){const st=steps[idx];if(st&&st.kind==='work')track[idx]=1}
 function next(){if(idx<steps.length-1){idx++;load()}else finish()}
 function finish(partial){
   clearInterval(tick);running=false;const dur=Math.round((Date.now()-startT)/1000);let pain=null;
   P.innerHTML=`<div class="ptop"><span></span></div><div class="pmain done"><div class="phase">${partial?'Séance interrompue':'Terminé'}</div><h2>${partial?'Pas grave !':'Bravo !'}</h2><p class="sub">${PROGS[curProg].n} · ${Math.round(dur/60)} min</p>
+  ${(()=>{const lw=[...steps].reverse().find(x=>x.kind==='work');return lw&&!rate[lw.bi]?rateBox(lw.bi,lw.e.n):''})()}
   <p style="margin-top:24px;font-weight:600">Douleur ressentie pendant la séance ?</p>
   <div class="pain">${[...Array(11)].map((_,i)=>`<button data-v="${i}">${i}</button>`).join('')}</div>
   <p class="sub" style="font-size:13px">0 = aucune · 10 = maximale</p>
   <textarea id="note" placeholder="Une remarque ? (exercice difficile, sensation, consigne du kiné…)" style="margin-top:16px;max-width:420px"></textarea></div>
   <div class="pctl"><button class="btn main" id="save">Enregistrer</button></div>`;
-  P.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{pain=+b.dataset.v;P.querySelectorAll('[data-v]').forEach(x=>x.classList.toggle('on',x===b))});
+  bindRate(P);
+  P.querySelectorAll('.pain [data-v]').forEach(b=>b.onclick=()=>{pain=+b.dataset.v;P.querySelectorAll('.pain [data-v]').forEach(x=>x.classList.toggle('on',x===b))});
   P.querySelector('#save').onclick=()=>{
-    const ex={};steps.forEach((st,i)=>{if(st.kind!=='work')return;const k=st.bi;ex[k]=ex[k]||{id:st.id,nom:st.e.n,series_prevues:st.sets,series_faites:0,valeur:st.v,unite:st.e.t==='time'?'s':(st.e.u||'reps'),par_cote:!!st.side};if(track[i])ex[k].series_faites++;if(painEx[k])ex[k].douleur=true});
-    const rec={id:uid(),date:new Date(startT).toISOString(),prog:curProg,programme:PROGS[curProg].n,phase:level+1,duree_s:dur,douleur:pain,interrompue:!!partial,exercices:Object.values(ex),note:P.querySelector('#note').value.trim()||undefined};
+    const ex={};steps.forEach((st,i)=>{if(st.kind!=='work')return;const k=st.bi;ex[k]=ex[k]||{id:st.id,nom:st.e.n,series_prevues:st.sets,series_faites:0,valeur:st.v,unite:st.e.t==='time'?'s':(st.e.u||'reps'),par_cote:!!st.side};if(track[i])ex[k].series_faites++;if(painEx[k])ex[k].douleur=true;if(rate[k])ex[k].ressenti=rate[k]});
+    const rec={id:uid(),date:new Date(startT).toISOString(),prog:curProg,programme:PROGS[curProg].n,phase:level+1,duree_s:dur,douleur:pain,interrompue:!!partial,exercices:Object.values(ex).filter(e=>!partial||e.series_faites>0),note:P.querySelector('#note').value.trim()||undefined};
     const h=S.get('hist',[]);h.push(rec);S.set('hist',h);stop();tab='home';render();sync();
   };
 }
