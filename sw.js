@@ -1,5 +1,5 @@
 // Cache simple : réseau d'abord pour l'appli, cache en secours (hors ligne). Jamais de cache pour l'API GitHub.
-const C='renfo-v11';
+const C='renfo-v12';
 const FILES=['./','index.html','figures.js','manifest.json','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(FILES)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim()});

@@ -264,7 +264,7 @@ function toast(t){let e=document.querySelector('.toast');if(!e){e=document.creat
 function mergeById(a,b){const m={};[...a,...b].forEach(x=>{if(x&&x.id)m[x.id]=Object.assign(m[x.id]||{},x)});return Object.values(m).sort((x,y)=>(x.date||'').localeCompare(y.date||''))}
 let syncing=false;
 const KEYS=[['seances','hist'],['suivi','suivi'],['poids','poids'],['cuisses','cuisses'],['tests','tests'],['quotidien','quotidien']];
-const SC=[['taille_cm','taille'],['annee_naissance','naissance'],['questions_kine','questions'],['ajustements','ajust']];
+const SC=[['taille_cm','taille'],['annee_naissance','naissance'],['questions_kine','questions'],['ajustements','ajust'],['rdv_chirurgien','rdvChir']];
 function setSc(l,v){S.set(l,v);S.set('maj_'+l,Date.now())}
 function localHash(){return JSON.stringify([...KEYS.map(([,l])=>S.get(l,[])),...SC.map(([,l])=>S.get(l,null))])}
 function pending(){return localHash()!==S.get('syncedHash','')}
@@ -307,6 +307,7 @@ function applyOverride(j){
   if(j.exercices)Object.entries(j.exercices).forEach(([k,v])=>{EX[k]=Object.assign(EX[k]||{},v)});
   if(j.programmes)Object.entries(j.programmes).forEach(([k,v])=>{if(v===null)delete PROGS[k];else PROGS[k]=Object.assign(PROGS[k]||{},v)});
   overrideNote=j.message||'';
+  if(j.rdv_chirurgien&&!S.get('maj_rdvChir',0))S.set('rdvChir',j.rdv_chirurgien);
 }
 function tokExp(){if(S.get('tokNoExp',false))return null;const c=S.get('connTest',null);if(c&&c.exp)return new Date(c.exp);const d=S.get('tokDate',null);return d?new Date(d+366*864e5):null}
 function syncLine(){
@@ -369,6 +370,7 @@ function home(){
   bindDaily();
   bindProg();
   const rk=app.querySelector('#rKine');if(rk)rk.onclick=()=>manualForm('kine');
+  const rr=app.querySelector('#rRdv');if(rr)rr.onclick=bilanKine;
   const rq=app.querySelector('#rQuot');if(rq)rq.onclick=()=>{tab='poids';S.set('mtab','quot');render()};
   const rt=app.querySelector('#rTest');if(rt)rt.onclick=()=>{tab='poids';S.set('mtab','tests');render()};
   app.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{level=+b.dataset.l;S.set('lvl',level);home()});
@@ -561,8 +563,10 @@ function bindProg(){
   app.querySelectorAll('[data-ok]').forEach(b=>b.onclick=()=>upd(sg[+b.dataset.ok],true));
   app.querySelectorAll('[data-no]').forEach(b=>b.onclick=()=>upd(sg[+b.dataset.no],false));
 }
+function rdvInfo(){const r=S.get('rdvChir',null);if(!r)return null;const d=Math.round((new Date(r+'T12:00')-new Date(today()+'T12:00'))/864e5);return {r,d}}
 function remindCards(){
-  let out='';const d=new Date();const h=S.get('hist',[]).filter(x=>!x.supprime);
+  let out='';const rv=rdvInfo();
+  if(rv&&rv.d>=0&&rv.d<=10)out+=`<button id="rRdv" class="card" style="width:100%;text-align:left;display:block;border-color:var(--gold)"><h3>🏰 Rendez-vous chirurgien ${rv.d===0?"aujourd'hui":rv.d===1?'demain':'dans '+rv.d+' jours'}</h3><span style="color:var(--muted);font-size:14px">${new Date(rv.r+'T12:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} · Prépare ton bilan et tes questions.</span></button>`;const d=new Date();const h=S.get('hist',[]).filter(x=>!x.supprime);
   const kineDone=h.some(x=>x.prog==='kine'&&(x.jour||x.date.slice(0,10))===today());
   if(d.getDay()===5&&!kineDone)out+=`<button id="rKine" class="card" style="width:100%;text-align:left;display:block"><h3>⚕ Séance kiné aujourd'hui ?</h3><span style="color:var(--muted);font-size:14px">Note ce que vous avez fait et ses consignes.</span></button>`;
   const lt=lastTest();if(!lt||(Date.now()-new Date(lt.jour+'T12:00'))/864e5>=28)out+=`<button id="rTest" class="card" style="width:100%;text-align:left;display:block"><h3>⚖ Test du mois</h3><span style="color:var(--muted);font-size:14px">${lt?'Ça fait 4 semaines : refais tes 4 tests.':'Fais tes premiers tests de référence (5 min).'}</span></button>`;
@@ -613,13 +617,14 @@ function bilanText(b){
   if(b.p7)m.push(`Poids : ${b.f1(b.p7)} kg (moy. 7 j)${b.p28?`, ${b.p7-b.p28>=0?'+':''}${b.f1(b.p7-b.p28)} kg en 4 sem.`:''}${b.imc?` · IMC ${b.f1(b.imc)}`:''}`);
   if(m.length)L.push('',...m);
   if(b.consignes.length)L.push('','Dernières consignes du kiné :',...b.consignes.map(x=>'- '+x));
+  const rv=rdvInfo();if(rv&&rv.d>=0)L.push('',`Prochain RDV chirurgien : ${new Date(rv.r+'T12:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}`);
   const q=(S.get('questions','')||'').trim();if(q)L.push('','Questions :',q);
   return L.join('\n');
 }
 function bilanKine(){
   const b=bilanData();const m=document.createElement('div');m.className='modal';
   const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  m.innerHTML=`<div class="sheet bilan"><h3>📜 Bilan pour le kiné</h3>
+  m.innerHTML=`<div class="sheet bilan"><h3>📜 Bilan pour le kiné ou le chirurgien</h3>
   <div class="stats" style="margin-top:6px"><div class="stat"><b>${b.nApp}</b><span>séances maison</span></div><div class="stat"><b>${b.f1(b.dS2)}</b><span>douleur séances (2 sem.)</span></div><div class="stat"><b>${b.gL+b.gN}</b><span>jours gonflés</span></div></div>
   <pre id="bTxt" style="white-space:pre-wrap;font-family:'EB Garamond',serif;font-size:15px;line-height:1.45;margin-top:14px;color:var(--ink)">${esc(bilanText(b))}</pre>
   <div class="lbl">Questions à poser au kiné</div><textarea id="bQ" placeholder="ex. Puis-je reprendre le vélo ? Quand passer en phase 2 ?">${esc(S.get('questions','')||'')}</textarea>
@@ -669,10 +674,13 @@ function settings(){
   <div id="ctest" style="margin-top:10px;font-size:14px;line-height:1.4">${lastTestHtml||(()=>{const c=S.get('connTest',null);return c?`<span style="color:var(--muted)">Dernier test le ${new Date(c.date).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})} : ${c.ok?'✅ tout fonctionnait':'❌ problème détecté'}</span>`:''})()}</div></div>
   <div class="card"><h3>Profil</h3><div class="lbl" style="margin-top:0">Année de naissance</div>
   <div class="wrow"><input type="text" inputmode="numeric" id="born" placeholder="ex. 1985" value="${S.get('naissance','')??''}"><div class="chips" style="margin:0"><button id="bornSave" class="on">OK</button></div></div>
+  <div class="lbl">Prochain rendez-vous chirurgien</div>
+  <div class="wrow"><input type="date" id="rdvIn" value="${S.get('rdvChir','')||''}" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"><div class="chips" style="margin:0"><button id="rdvSave" class="on">OK</button></div></div>
   <p style="font-size:13px;color:var(--muted);margin-top:8px">${age()!=null?`${age()} ans · `:''}Sert à comparer tes tests d'équilibre aux valeurs de ton âge, et figure sur le bilan kiné.</p></div>
   <div class="card"><h3>Données</h3><p style="font-size:13px;color:var(--muted);line-height:1.5">${S.get('hist',[]).length} séances, ${S.get('suivi',[]).length} jours de suivi et ${S.get('poids',[]).filter(x=>!x.supprime).length} pesées, ${S.get('cuisses',[]).filter(x=>!x.supprime).length} mesures de cuisses et ${S.get('tests',[]).filter(x=>!x.supprime).length} tests enregistrés. Fichier : <b>${GH.repo}/${GH.file}</b>.</p></div>`;
   app.querySelector('#tkSave').onclick=()=>{const v=app.querySelector('#tk').value.trim();if(v&&!v.startsWith('•')){S.set('ghToken',v);S.set('tokDate',Date.now());S.set('connTest',null);settings();testConn()}};
   app.querySelector('#tConn').onclick=testConn;
+  app.querySelector('#rdvSave').onclick=()=>{setSc('rdvChir',app.querySelector('#rdvIn').value||null);toast('Rendez-vous enregistré');settings();sync()};
   app.querySelector('#bornSave').onclick=()=>{const y=parseInt(app.querySelector('#born').value,10);const cy=new Date().getFullYear();if(!(y>cy-100&&y<cy-10)){toast('Année invalide');return}setSc('naissance',y);toast('Profil enregistré');settings();sync()};
   app.querySelectorAll('#tkExp button').forEach(b=>b.onclick=()=>{S.set('tokNoExp',b.dataset.v==='1');settings()});
   app.querySelector('#syncNow').onclick=()=>sync(true).then(()=>{if(tab==='set')settings()});
@@ -708,7 +716,7 @@ function lib(){
 function hist(){
   const h=S.get('hist',[]).filter(x=>!x.supprime).sort((a,b)=>b.date.localeCompare(a.date));
   app.innerHTML=`<h1>Historique</h1>${syncLine()}
-  <div class="chips" style="margin:16px 0"><button id="addKine" class="on">+ Séance kiné</button><button id="addOther">+ Autre activité</button><button id="bilanK">📜 Bilan pour le kiné</button></div>
+  <div class="chips" style="margin:16px 0"><button id="addKine" class="on">+ Séance kiné</button><button id="addOther">+ Autre activité</button><button id="bilanK">📜 Bilan kiné / chirurgien</button></div>
   ${h.length?h.map(x=>`<details class="hist"><summary><div class="hrow"><div><b>${x.manuel&&x.prog==='kine'?'⚕ ':''}${x.programme||x.prog}</b>${x.manuel?'':` · Phase ${x.phase}`}${x.interrompue?' · <span style="color:var(--knee)">interrompue</span>':''}<small>${new Date(x.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</small></div><div style="text-align:right">${Math.round((x.duree_s||0)/60)} min<small>${x.douleur!=null?'douleur '+x.douleur+'/10':''}</small></div></div></summary>
   <div class="hdet">${(x.exercices||[]).map(e=>`${e.series_faites>=e.series_prevues?'✓':e.series_faites?'◐':'✕'} ${e.nom} — ${e.series_faites}/${e.series_prevues}${e.douleur?' · <span style="color:var(--knee)">douloureux</span>':''}`).join('<br>')}${x.contenu?`<b>Fait :</b> ${x.contenu}`:''}${x.consignes?`<br><b>Consignes :</b> ${x.consignes}`:''}${x.note?`<br><i>« ${x.note} »</i>`:''}${x.manuel?`<br><button data-edit="${x.id}" style="color:var(--gold);text-decoration:underline;font-size:13px;margin-top:6px">Modifier</button>`:''}</div></details>`).join(''):'<div class="empty">Pas encore de séance. Lance-toi !</div>'}`;
   app.querySelector('#addKine').onclick=()=>manualForm('kine');

@@ -37,6 +37,7 @@ Lu par l'appli à chaque synchro, il ajuste le programme sans toucher au code.
 ```json
 {
   "message": "Pont fessier passé à 3×15 suite à la séance kiné du 20/11.",
+  "rdv_chirurgien": "2026-11-25",
   "exercices": { "pont": { "m": "Nouvelle consigne…" } },
   "programmes": {
     "genou": { "items": [["tapis",[1,1],[300,300],0], ["pont",[3,3],[15,15],45]] },
