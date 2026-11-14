@@ -1,7 +1,7 @@
 # Renfo — genou & dos
 
 Appli de renforcement musculaire (PWA) adaptée à une fissure complexe du ménisque interne droit, non opérée, avec suivi kiné.
-Matériel : élastique, tapis de marche, rameur.
+Matériel : élastique, tapis de marche, rameur. Suivi du poids intégré. Thème gothique, icône château (`castle.svg`).
 
 - Appli : `index.html`, publiée par GitHub Pages depuis ce dépôt.
 - Données : dépôt **privé** `Leveilleur-bit/Renfo-donees`.
@@ -18,7 +18,8 @@ Matériel : élastique, tapis de marche, rameur.
                    "series_faites": 2, "valeur": 10, "unite": "reps", "par_cote": true, "douleur": true}]
   }],
   "suivi": [{"id": "j2026-11-14", "jour": "2026-11-14", "douleur": 2,
-             "gonflement": "aucun|léger|net", "symptomes": ["blocage", "dérobement", "raideur matin"]}]
+             "gonflement": "aucun|léger|net", "symptomes": ["blocage", "dérobement", "raideur matin"]}],
+  "poids": [{"id": "p2026-11-14", "jour": "2026-11-14", "kg": 83.2, "supprime": false}]
 }
 ```
 

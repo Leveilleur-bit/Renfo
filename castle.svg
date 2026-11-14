@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2150"/>
+      <stop offset=".65" stop-color="#171230"/>
+      <stop offset="1" stop-color="#0c0a16"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#f4cf6a" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#f4cf6a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="w" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#sky)"/>
+  <!-- étoiles -->
+  <g fill="#e9dcb8">
+    <circle cx="70" cy="80" r="2"/><circle cx="130" cy="140" r="1.4"/><circle cx="200" cy="60" r="1.8"/>
+    <circle cx="300" cy="95" r="1.3"/><circle cx="460" cy="190" r="1.6"/><circle cx="50" cy="210" r="1.3"/>
+    <circle cx="250" cy="35" r="1.2"/><circle cx="440" cy="40" r="1.4"/>
+  </g>
+  <!-- lune -->
+  <mask id="m"><rect width="512" height="512" fill="#fff"/><circle cx="414" cy="98" r="42" fill="#000"/></mask>
+  <circle cx="392" cy="112" r="46" fill="#efe0ae" mask="url(#m)"/>
+  <!-- colline -->
+  <path d="M0 470 Q256 395 512 470 V512 H0Z" fill="#0a0812"/>
+  <!-- château -->
+  <g fill="#0e0b18">
+    <!-- tour gauche -->
+    <rect x="104" y="250" width="60" height="200"/>
+    <path d="M94 252 L134 150 L174 252Z"/>
+    <!-- petite tour gauche -->
+    <rect x="168" y="300" width="40" height="150"/>
+    <path d="M162 302 L188 240 L214 302Z"/>
+    <!-- donjon -->
+    <rect x="212" y="205" width="88" height="245"/>
+    <path d="M202 207 L256 92 L310 207Z"/>
+    <!-- petite tour droite -->
+    <rect x="304" y="290" width="40" height="160"/>
+    <path d="M298 292 L324 232 L350 292Z"/>
+    <!-- tour droite -->
+    <rect x="348" y="238" width="62" height="212"/>
+    <path d="M338 240 L379 140 L420 240Z"/>
+    <!-- remparts crénelés -->
+    <path d="M86 450 V352 h14 v-14 h14 v14 h14 v-14 h14 v14 h14 v-14 h14 v14 h14 v-14 h14 v14 H330 v-14 h14 v14 h14 v-14 h14 v14 h14 v-14 h14 v14 h14 v-14 h14 v14 V450Z"/>
+    <!-- flèche + drapeau -->
+    <rect x="254" y="62" width="4" height="34"/>
+  </g>
+  <path d="M258 64 L284 72 L258 80Z" fill="#9c2f2f"/>
+  <!-- fenêtres éclairées -->
+  <g fill="#f4c55e">
+    <g filter="url(#w)" opacity=".9">
+      <path d="M248 250 h16 v-16 a8 8 0 0 0 -16 0Z"/><path d="M128 300 h12 v-12 a6 6 0 0 0 -12 0Z"/>
+      <path d="M373 290 h12 v-12 a6 6 0 0 0 -12 0Z"/><path d="M248 320 h16 v-16 a8 8 0 0 0 -16 0Z"/>
+    </g>
+    <path d="M248 250 h16 v-16 a8 8 0 0 0 -16 0Z"/>
+    <path d="M248 320 h16 v-16 a8 8 0 0 0 -16 0Z"/>
+    <path d="M128 300 h12 v-12 a6 6 0 0 0 -12 0Z"/>
+    <path d="M128 360 h12 v-12 a6 6 0 0 0 -12 0Z"/>
+    <path d="M373 290 h12 v-12 a6 6 0 0 0 -12 0Z"/>
+    <path d="M182 340 h10 v-10 a5 5 0 0 0 -10 0Z"/>
+    <path d="M318 330 h10 v-10 a5 5 0 0 0 -10 0Z"/>
+    <path d="M373 350 h12 v-12 a6 6 0 0 0 -12 0Z"/>
+  </g>
+  <!-- porte -->
+  <path d="M236 450 V402 a20 20 0 0 1 40 0 V450Z" fill="#f4c55e" opacity=".8"/>
+  <circle cx="256" cy="420" r="70" fill="url(#glow)" opacity=".35"/>
+</svg>

@@ -1,11 +1,11 @@
 {
-  "name": "Renfo genou & dos",
+  "name": "Renfo — genou, dos & poids",
   "short_name": "Renfo",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f1ea",
-  "theme_color": "#1f2a24",
+  "background_color": "#100d0b",
+  "theme_color": "#100d0b",
   "lang": "fr",
   "icons": [
     {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
