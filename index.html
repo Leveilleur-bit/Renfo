@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Renfo Genou & Dos</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f2a24">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f1ea; --card:#fffdf9; --ink:#1f2a24; --muted:#6b736d; --line:#e6dfd3;
+  --knee:#d9692e; --back:#2f6f8f; --mix:#5a7d3a; --cardio:#8a4f9e;
+  --accent:#1f2a24; --soft:#efe8dc; --radius:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#141815;--card:#1d221f;--ink:#eef0ea;--muted:#9aa29c;--line:#2c332e;--soft:#252b27;--accent:#eef0ea}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+.wrap{max-width:560px;margin:0 auto;padding:22px 18px 110px}
+h1{font-family:Fraunces,serif;font-weight:800;font-size:34px;letter-spacing:-.02em;line-height:1.05}
+h2{font-family:Fraunces,serif;font-weight:600;font-size:22px;margin:26px 0 12px}
+.sub{color:var(--muted);margin-top:6px;font-size:15px}
+.pill-row{display:flex;gap:8px;margin-top:18px;background:var(--soft);padding:4px;border-radius:999px;width:fit-content}
+.pill-row button{padding:8px 16px;border-radius:999px;font-weight:600;font-size:14px;color:var(--muted)}
+.pill-row button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.stat b{font-size:22px;display:block;font-family:Fraunces,serif}
+.stat span{font-size:12px;color:var(--muted)}
+.prog{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:12px;display:flex;gap:14px;align-items:center;width:100%;text-align:left;transition:transform .15s}
+.prog:active{transform:scale(.98)}
+.prog .dot{width:46px;height:46px;border-radius:14px;flex-shrink:0;display:grid;place-items:center;color:#fff;font-weight:800;font-family:Fraunces,serif;font-size:20px}
+.prog h3{font-size:17px;font-weight:700}
+.prog p{font-size:13px;color:var(--muted);margin-top:3px}
+.prog .go{margin-left:auto;font-size:22px;color:var(--muted)}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:5}
+.tabs button{flex:1;max-width:180px;padding:8px;font-size:13px;font-weight:600;color:var(--muted)}
+.tabs button.on{color:var(--ink)}
+.tabs button i{display:block;font-style:normal;font-size:20px;margin-bottom:2px}
+.ex{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;overflow:hidden}
+.ex summary{padding:14px 16px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px}
+.ex summary::-webkit-details-marker{display:none}
+.tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;color:#fff;text-transform:uppercase;letter-spacing:.04em}
+.ex .body{padding:0 16px 16px;font-size:14px;line-height:1.55;color:var(--ink)}
+.ex .body ul{margin:8px 0 0 18px}
+.ex .body .warn{margin-top:10px;font-size:13px;color:var(--knee)}
+.equip{font-size:12px;color:var(--muted);margin-left:auto;font-weight:500}
+.filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.filter button{padding:6px 12px;border-radius:999px;border:1px solid var(--line);font-size:13px;font-weight:600}
+.filter button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hist{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.hist small{color:var(--muted);display:block;margin-top:2px}
+.empty{color:var(--muted);text-align:center;padding:40px 0;font-size:14px}
+.note{background:var(--soft);border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.5;color:var(--muted);margin-top:22px}
+
+/* Player */
+#player{position:fixed;inset:0;background:var(--bg);z-index:10;display:none;flex-direction:column}
+#player.show{display:flex}
+.ptop{display:flex;align-items:center;justify-content:space-between;padding:16px 18px}
+.ptop button{font-size:15px;font-weight:600;color:var(--muted);padding:6px}
+.bar{height:4px;background:var(--line);margin:0 18px;border-radius:4px;overflow:hidden}
+.bar div{height:100%;background:var(--ink);transition:width .3s}
+.pmain{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 24px;text-align:center;max-width:560px;margin:0 auto;width:100%;overflow-y:auto}
+.phase{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pname{font-family:Fraunces,serif;font-size:30px;font-weight:800;margin:8px 0 4px;line-height:1.1}
+.pset{color:var(--muted);font-size:15px}
+.ring{position:relative;width:230px;height:230px;margin:22px 0}
+.ring svg{transform:rotate(-90deg)}
+.ring .val{position:absolute;inset:0;display:grid;place-items:center;font-family:Fraunces,serif;font-size:58px;font-weight:800}
+.ring .val small{display:block;font-family:Inter;font-size:14px;color:var(--muted);font-weight:500;margin-top:-6px}
+.cues{font-size:14px;color:var(--muted);line-height:1.5;max-width:400px}
+.cues li{list-style:none;margin:3px 0}
+.next{margin-top:16px;font-size:14px;color:var(--muted)}
+.next b{color:var(--ink)}
+.pctl{display:flex;gap:12px;padding:18px 18px calc(22px + env(safe-area-inset-bottom));justify-content:center}
+.btn{padding:16px 22px;border-radius:16px;font-weight:700;font-size:16px;background:var(--soft)}
+.btn.main{background:var(--ink);color:var(--bg);flex:1;max-width:280px}
+.rest .pname{color:var(--muted)}
+.done{text-align:center}
+.done h2{font-size:32px;margin:0 0 8px}
+.pain{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:16px 0}
+.pain button{width:38px;height:38px;border-radius:10px;background:var(--soft);font-weight:700}
+.pain button.on{background:var(--ink);color:var(--bg)}
+.men{margin-top:10px;font-size:13px;background:var(--soft);border-left:3px solid var(--knee);padding:8px 10px;border-radius:6px;line-height:1.45}
+.men.pm{max-width:400px;text-align:left;margin-top:14px}
+.alert{margin-top:14px;padding:10px 14px;border-radius:12px;background:#d9692e1f;color:var(--knee);font-weight:700;font-size:14px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);border-radius:22px 22px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom));max-width:560px;width:100%;max-height:85vh;overflow:auto;font-size:14px;line-height:1.55}
+.sheet h3{font-family:Fraunces,serif;font-size:22px;margin-bottom:10px}
+.sheet h4{margin:14px 0 4px}
+.sheet ul{margin-left:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:18px}
+.card h3{font-size:15px;font-weight:700;margin-bottom:10px}
+.scale{display:flex;gap:4px;flex-wrap:wrap}
+.scale button{width:30px;height:32px;border-radius:8px;background:var(--soft);font-weight:700;font-size:13px}
+.scale button.on{background:var(--ink);color:var(--bg)}
+.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.chips button{padding:7px 12px;border-radius:999px;background:var(--soft);font-size:13px;font-weight:600}
+.chips button.on{background:var(--ink);color:var(--bg)}
+.lbl{font-size:13px;color:var(--muted);margin:10px 0 6px}
+input[type=password],input[type=text],textarea{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:15px}
+textarea{min-height:70px;resize:vertical}
+.sync{font-size:12px;color:var(--muted);margin-top:6px}
+.sync.err{color:var(--knee)}
+.hist details summary{list-style:none;cursor:pointer}
+.hist{display:block}
+.hrow{display:flex;justify-content:space-between;align-items:center}
+.hdet{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<nav class="tabs">
+  <button data-tab="home" class="on"><i>◉</i>Séances</button>
+  <button data-tab="lib"><i>☰</i>Exercices</button>
+  <button data-tab="hist"><i>↺</i>Historique</button>
+  <button data-tab="set"><i>⚙</i>Réglages</button>
+</nav>
+
+<div id="player"></div>
+
+<script>
+const C={knee:'var(--knee)',back:'var(--back)',mix:'var(--mix)',cardio:'var(--cardio)'};
+const ZL={knee:'Genou',back:'Dos',cardio:'Cardio'};
+
+/* ---------- Exercices ---------- */
+/* m = adaptation ménisque interne droit */
+const EX={
+  tapis:{n:"Marche sur tapis",z:'cardio',eq:"Tapis",t:'time',d:"Échauffement : marche à allure confortable, puis accélère un peu.",c:["Commence à 3–4 km/h","Accélère à 5 km/h après 2 min","Pas réguliers, sans à-coups"],m:"Le meilleur cardio pour ton genou : pas d'impact, flexion faible."},
+  tapisInc:{n:"Marche inclinée",z:'cardio',eq:"Tapis",t:'time',d:"Marche avec une légère pente : renforce fessiers et mollets sans impact.",c:["Pente 2–5 %, pas plus","Ne t'accroche pas aux barres","Allure où tu peux encore parler"],m:"Pente modérée seulement. Évite les pentes fortes et la marche en descente."},
+  rameur:{n:"Rameur course courte",z:'cardio',eq:"Rameur",t:'time',d:"Rameur avec une amplitude de jambes réduite : tu ne reviens pas jusqu'à l'avant du rail.",c:["Arrête le retour avant que les tibias soient verticaux","Résistance basse (damper 1–4)","Jambes → buste → bras, dos droit"],m:"Sur le rameur, la position avant plie le genou bien au-delà de 90°, ce qui charge l'arrière du ménisque. Raccourcis le mouvement. Si ça tire à l'intérieur ou derrière le genou : passe au tapis.",w:"Arrête si douleur à l'intérieur ou à l'arrière du genou."},
+  rameurInt:{n:"Rameur intervalles (course courte)",z:'cardio',eq:"Rameur",t:'time',d:"Alterne 1 min tranquille et 1 min un peu plus soutenue, toujours en course courte.",c:["Tibias jamais verticaux à l'avant","Effort modéré, pas d'à-coups","Pousse avec les jambes, pas avec le dos"],m:"Amplitude réduite obligatoire. Remplace par le tapis si le genou proteste.",w:"Arrête si douleur à l'intérieur ou à l'arrière du genou."},
+  quadset:{n:"Contraction statique du quadriceps",z:'knee',eq:"Tapis de sol",t:'reps',d:"Assis ou allongé jambe tendue, serviette roulée sous le genou. Écrase la serviette en contractant la cuisse, tiens 5 s.",c:["Tiens 5 secondes","Rotule qui remonte","Orteils vers toi"],m:"Renforce le quadriceps sans charger le ménisque. La base de la phase 1.",side:true,u:"contractions de 5 s"},
+  slr:{n:"Élévation jambe tendue",z:'knee',eq:"Tapis de sol",t:'reps',d:"Allongé sur le dos, jambe gauche pliée. Contracte la cuisse droite puis lève la jambe tendue jusqu'à la hauteur du genou opposé.",c:["Genou bien verrouillé","Monte en 2 s, descends en 3 s","Bas du dos posé au sol"],m:"Travaille le quadriceps genou tendu : aucune flexion. Fais les deux jambes.",side:true},
+  heelslide:{n:"Glissement du talon",z:'knee',eq:"Tapis de sol",t:'reps',d:"Allongé, chaussette sur sol lisse. Glisse doucement le talon vers les fesses puis retends la jambe.",c:["Uniquement dans la zone confortable","Pas de forçage en fin de flexion","Retends complètement à chaque fois"],m:"Mobilité en douceur, sans charge. Ne force jamais la flexion.",side:true},
+  pont:{n:"Pont fessier",z:'knee',eq:"Tapis de sol",t:'reps',d:"Allongé sur le dos, genoux fléchis, pieds à plat. Monte le bassin jusqu'à aligner épaules, hanches, genoux.",c:["Pieds un peu éloignés des fesses","Serre les fessiers en haut 2 s","Ne cambre pas le bas du dos"],m:"Pieds assez loin des fesses, pour garder le genou peu plié (environ 60–80°)."},
+  clam:{n:"Coquillage à l'élastique",z:'knee',eq:"Élastique",t:'reps',d:"Couché sur le côté, genoux légèrement fléchis, élastique au-dessus des genoux. Ouvre le genou du dessus en gardant les pieds collés.",c:["Bassin immobile","Ouvre sans rouler en arrière","Retour lent"],m:"Renforce le moyen fessier, qui empêche le genou de rentrer vers l'intérieur.",side:true},
+  abd:{n:"Abduction de hanche couché",z:'knee',eq:"Tapis de sol",t:'reps',d:"Couché sur le côté, jambe du dessus tendue. Lève-la vers le plafond, légèrement vers l'arrière.",c:["Pointe du pied vers l'avant","Ne bascule pas le bassin","Option : élastique aux chevilles"],m:"Hanche forte = genou mieux aligné. Aucune contrainte sur le ménisque.",side:true},
+  squat:{n:"Assis-debout sur chaise haute",z:'knee',eq:"Chaise haute",t:'reps',d:"Lève-toi d'une chaise haute (ou chaise + coussin) sans les mains, puis rassieds-toi lentement.",c:["Genoux dans l'axe des pieds","Descente en 3 secondes","Poids réparti sur les deux jambes"],m:"Assise haute pour ne pas dépasser environ 60–70° de flexion. Ne te laisse pas tomber sur la chaise.",w:"Si ça pince à l'intérieur du genou : rehausse encore l'assise."},
+  tke:{n:"Extension terminale du genou",z:'knee',eq:"Élastique",t:'reps',d:"Élastique attaché à un point fixe, passé derrière le genou. Genou légèrement fléchi, tends-le complètement contre la résistance.",c:["Contracte la cuisse 2 s jambe tendue","Talon au sol","Mouvement court et contrôlé"],m:"Travail sur les 30 derniers degrés : excellent et sans risque pour le ménisque.",side:true},
+  lateral:{n:"Pas latéraux à l'élastique",z:'knee',eq:"Élastique",t:'reps',d:"Élastique au-dessus des genoux. Genoux à peine fléchis, fais des pas de côté.",c:["Flexion légère seulement","Genoux vers l'extérieur","Pieds parallèles, ne pivote pas"],m:"Reste presque debout. Pas de rotation du genou pied au sol.",side:true,u:"pas"},
+  mollet:{n:"Montées sur pointes",z:'knee',eq:"Aucun",t:'reps',d:"Debout, monte sur la pointe des pieds puis redescends lentement.",c:["Appuie-toi légèrement à un mur","Monte haut, descends en 3 s","Phase 2 : sur une jambe"],m:"Sans danger pour le genou."},
+  mur:{n:"Chaise contre le mur (haute)",z:'knee',eq:"Mur",t:'time',d:"Dos au mur, descends un peu comme pour t'asseoir et tiens la position.",c:["Flexion de 30–45° maximum","Genoux au-dessus des chevilles","Respire normalement"],m:"Garde cette position haute. Ne descends pas à 90°.",w:"Remonte si le genou tire à l'intérieur."},
+  equilibre:{n:"Équilibre sur une jambe",z:'knee',eq:"Aucun",t:'time',d:"Tiens-toi sur une jambe, genou légèrement déverrouillé.",c:["Regard fixe devant toi","Phase 2 : yeux fermés","Près d'un mur pour la sécurité"],m:"Ne tourne pas le buste en appui sur la jambe droite. Le ménisque abîmé dégrade l'équilibre, d'où l'intérêt de cet exercice.",side:true},
+  chat:{n:"Chat-vache",z:'back',eq:"Tapis de sol",t:'reps',d:"À quatre pattes, alterne dos rond et dos creux, doucement.",c:["Coussin sous les genoux","Synchronise avec la respiration","Amplitude sans douleur"],m:"Coussin ou tapis plié sous les genoux. Ne t'assieds pas sur les talons."},
+  birddog:{n:"Bird dog",z:'back',eq:"Tapis de sol",t:'reps',d:"À quatre pattes, tends bras et jambe opposés, tiens 3 s, reviens.",c:["Coussin sous les genoux","Bassin immobile, pas de rotation","Dos plat comme une table"],m:"Si l'appui à genoux gêne le genou droit : fais-le debout, mains sur une table.",side:true},
+  deadbug:{n:"Dead bug",z:'back',eq:"Tapis de sol",t:'reps',d:"Sur le dos, bras au plafond, genoux à 90°. Descends bras et jambe opposés sans décoller le bas du dos.",c:["Bas du dos plaqué au sol","Expire en descendant","Lent et contrôlé"],side:true},
+  planche:{n:"Planche",z:'back',eq:"Tapis de sol",t:'time',d:"Sur les avant-bras, corps aligné. Phase 1 : sur les genoux, coussin dessous.",c:["Rentre le nombril","Serre les fessiers","Ne laisse pas le bassin tomber"]},
+  lat:{n:"Gainage latéral",z:'back',eq:"Tapis de sol",t:'time',d:"Sur le côté, appui avant-bras et pieds (ou genoux), bassin levé.",c:["Corps en ligne droite","Épaule au-dessus du coude","Hanche haute"],m:"Version sur les genoux : coussin dessous. Si ça appuie sur l'intérieur du genou droit, passe à la version sur les pieds ou réduis le temps.",side:true},
+  rowing:{n:"Tirage à l'élastique",z:'back',eq:"Élastique",t:'reps',d:"Élastique fixé devant toi à hauteur de poitrine. Tire les coudes vers l'arrière.",c:["Serre les omoplates","Épaules basses","Assis sur une chaise si tu préfères"]},
+  pullapart:{n:"Écarté à l'élastique",z:'back',eq:"Élastique",t:'reps',d:"Bras tendus devant, élastique entre les mains. Écarte jusqu'à toucher la poitrine.",c:["Bras presque tendus","Serre le haut du dos","Ne cambre pas"]},
+  pallof:{n:"Pallof press",z:'back',eq:"Élastique",t:'reps',d:"Élastique fixé sur le côté à hauteur de poitrine. Mains au sternum, pousse devant toi sans laisser le buste tourner.",c:["Résiste à la rotation","Tiens 2 s bras tendus","Genoux souples, pas verrouillés"],m:"Les pieds ne bougent pas : aucune torsion du genou.",side:true},
+  superman:{n:"Superman doux",z:'back',eq:"Tapis de sol",t:'reps',d:"Sur le ventre, décolle légèrement bras et jambes opposés, tiens 2 s.",c:["Petit décollement suffit","Regard vers le sol","Fessiers serrés"],w:"À éviter si ça déclenche une douleur lombaire."},
+  hinge:{n:"Charnière de hanche à l'élastique",z:'back',eq:"Élastique",t:'reps',d:"Debout sur l'élastique, extrémités dans les mains. Penche-toi en poussant les fesses en arrière, dos droit, puis redresse-toi.",c:["Dos neutre, jamais rond","Genoux légèrement fléchis","Monte en serrant les fessiers"],m:"Les genoux restent presque tendus : bon exercice pour fessiers et ischios sans charger le ménisque."},
+};
+
+/* ---------- Programmes ---------- */
+/* [id, séries[phase1,phase2], reps/sec[phase1,phase2], repos(s)] */
+const PROGS={
+  genou:{n:"Genou",z:'knee',l:"G",d:"Quadriceps, fessiers, stabilité · sans flexion profonde",items:[
+    ['tapis',[1,1],[300,300],0],['quadset',[2,3],[10,10],20],['slr',[2,3],[10,12],30],['heelslide',[1,1],[10,10],15],
+    ['pont',[2,3],[12,15],45],['clam',[2,3],[12,15],20],['tke',[2,3],[15,15],30],['squat',[2,3],[8,12],60],
+    ['lateral',[2,3],[8,12],45],['mollet',[2,3],[15,20],30],['mur',[2,3],[20,40],45],['equilibre',[2,3],[30,45],15]]},
+  dos:{n:"Dos",z:'back',l:"D",d:"Gainage, posture, bas et haut du dos",items:[
+    ['tapis',[1,1],[300,300],0],['chat',[1,1],[10,10],20],['birddog',[2,3],[8,10],30],['deadbug',[2,3],[8,10],30],
+    ['planche',[2,3],[20,40],45],['lat',[2,3],[15,30],20],['rowing',[2,3],[12,15],45],['pullapart',[2,3],[15,15],30],
+    ['pallof',[2,3],[10,10],20],['hinge',[2,3],[12,15],45]]},
+  complet:{n:"Complète",z:'mix',l:"C",d:"Genou + dos en une séance",items:[
+    ['tapis',[1,1],[300,300],0],['quadset',[1,2],[10,10],20],['slr',[2,3],[10,12],30],['pont',[2,3],[12,15],45],['rowing',[2,3],[12,15],45],
+    ['birddog',[2,3],[8,10],30],['tke',[2,3],[15,15],30],['abd',[2,3],[12,15],20],['planche',[2,3],[20,40],45],['pallof',[2,3],[10,10],20],
+    ['squat',[2,3],[8,12],60],['tapis',[1,1],[180,300],0]]},
+  cardio:{n:"Cardio doux",z:'cardio',l:"♥",d:"Tapis surtout, rameur en course courte",items:[
+    ['tapis',[1,1],[300,300],0],['tapisInc',[1,1],[600,900],0],['rameurInt',[0,4],[60,60],60],['tapis',[1,1],[180,180],0]]},
+};
+/* ---------- Stockage (navigateur) ---------- */
+const S={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+(function(){const h=S.get('hist',[]);if(h.some(x=>x.t&&!x.id)){S.set('hist',h.map(x=>x.id?x:{id:'old'+x.t,date:new Date(x.t).toISOString(),prog:x.p,programme:x.p,phase:(x.l||0)+1,duree_s:x.s,douleur:x.pain,exercices:[]}))}})();
+let level=S.get('lvl',0), tab='home', libF='all';
+
+/* ---------- Synchro GitHub (dépôt privé) ---------- */
+const GH={owner:'Leveilleur-bit',repo:'Renfo-donees',file:'seances.json',prog:'programme.json',branch:'main'};
+let syncState=S.get('syncState',{});
+function tok(){return S.get('ghToken','')}
+function hdr(){return {'Authorization':'token '+tok(),'Accept':'application/vnd.github+json','Content-Type':'application/json'}}
+function url(f){return `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${f}`}
+function b64e(str){return btoa(unescape(encodeURIComponent(str)))}
+function b64d(b){return decodeURIComponent(escape(atob(b.replace(/\n/g,''))))}
+function toast(t){let e=document.querySelector('.toast');if(!e){e=document.createElement('div');e.className='toast';document.body.appendChild(e)}e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2500)}
+function mergeById(a,b){const m={};[...a,...b].forEach(x=>{if(x&&x.id)m[x.id]=Object.assign(m[x.id]||{},x)});return Object.values(m).sort((x,y)=>(x.date||'').localeCompare(y.date||''))}
+let syncing=false;
+async function sync(manual){
+  if(!tok()){if(manual)toast('Ajoute ton token dans Réglages');return}
+  if(syncing)return;syncing=true;
+  try{
+    let remote={seances:[],suivi:[]},sha=null;
+    const r=await fetch(url(GH.file)+'?ref='+GH.branch+'&t='+Date.now(),{headers:hdr(),cache:'no-store'});
+    if(r.ok){const j=await r.json();sha=j.sha;try{remote=JSON.parse(b64d(j.content))}catch(e){}}
+    else if(r.status!==404)throw new Error('GitHub '+r.status);
+    const local={seances:S.get('hist',[]),suivi:S.get('suivi',[])};
+    const merged={app:'Renfo genou & dos',profil:'Fissure complexe ménisque interne droit, non opéré, suivi kiné',maj:new Date().toISOString(),
+      seances:mergeById(remote.seances||[],local.seances),suivi:mergeById(remote.suivi||[],local.suivi)};
+    const changed=JSON.stringify({a:remote.seances,b:remote.suivi})!==JSON.stringify({a:merged.seances,b:merged.suivi});
+    if(changed||!sha){
+      const body={message:'séances '+new Date().toISOString().slice(0,16),content:b64e(JSON.stringify(merged,null,1)),branch:GH.branch};if(sha)body.sha=sha;
+      const p=await fetch(url(GH.file),{method:'PUT',headers:hdr(),body:JSON.stringify(body)});
+      if(p.status===409){syncing=false;return sync(manual)}
+      if(!p.ok)throw new Error('GitHub '+p.status);
+    }
+    S.set('hist',merged.seances);S.set('suivi',merged.suivi);
+    syncState={ok:Date.now()};S.set('syncState',syncState);
+    await loadProgramme();
+    if(manual)toast('Synchronisé ✓');
+  }catch(e){syncState={err:String(e.message||e),at:Date.now()};S.set('syncState',syncState);if(manual)toast('Échec synchro : '+syncState.err)}
+  syncing=false;if(!document.getElementById('player').classList.contains('show'))render();
+}
+/* programme.json (facultatif, dans le dépôt privé) : ajustements de Claude ou du kiné */
+async function loadProgramme(){
+  try{
+    const r=await fetch(url(GH.prog)+'?ref='+GH.branch+'&t='+Date.now(),{headers:hdr(),cache:'no-store'});
+    if(!r.ok)return;const j=JSON.parse(b64d((await r.json()).content));S.set('progOverride',j);applyOverride(j);
+  }catch(e){}
+}
+let overrideNote='';
+function applyOverride(j){
+  if(!j)return;
+  if(j.exercices)Object.entries(j.exercices).forEach(([k,v])=>{EX[k]=Object.assign(EX[k]||{},v)});
+  if(j.programmes)Object.entries(j.programmes).forEach(([k,v])=>{if(v===null)delete PROGS[k];else PROGS[k]=Object.assign(PROGS[k]||{},v)});
+  overrideNote=j.message||'';
+}
+function syncLine(){
+  if(!tok())return '<div class="sync err">Synchro GitHub non configurée (Réglages)</div>';
+  if(syncState.err)return `<div class="sync err">Synchro en échec : ${syncState.err}</div>`;
+  if(syncState.ok)return `<div class="sync">Synchronisé ${new Date(syncState.ok).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>`;
+  return '';
+}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+
+/* ---------- Rendu ---------- */
+const app=document.getElementById('app');
+function estMin(p){let s=0;p.items.forEach(([id,se,r,rest])=>{const e=EX[id];const n=se[level];if(!n)return;const w=e.t==='time'?r[level]:r[level]*4;s+=n*w*(e.side?2:1)+(n-1)*rest+(n>1||e.t!=='time'?20:0)});return Math.round(s/60)}
+function render(){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  if(tab==='home')home(); else if(tab==='lib')lib(); else if(tab==='set')settings(); else hist();
+  window.scrollTo(0,0);
+}
+function home(){
+  const h=S.get('hist',[]);const wk=Date.now()-7*864e5;
+  const rec=h.filter(x=>new Date(x.date).getTime()>wk);const thisWeek=rec.length;const mins=Math.round(rec.reduce((a,x)=>a+(x.duree_s||0),0)/60);
+  app.innerHTML=`<h1>Renfo<br>genou & dos</h1><p class="sub">Adapté à ta fissure du ménisque interne droit.</p>${syncLine()}<button id="alertBtn" class="alert">⚠ Signaux d'alerte : quand arrêter</button>
+  <div class="pill-row"><button data-l="0" class="${level==0?'on':''}">Phase 1 · Protection</button><button data-l="1" class="${level==1?'on':''}">Phase 2 · Renfo</button></div>
+  <div class="stats"><div class="stat"><b>${thisWeek}</b><span>séances / 7 j</span></div><div class="stat"><b>${mins}</b><span>minutes / 7 j</span></div><div class="stat"><b>${h.length}</b><span>au total</span></div></div>
+  ${overrideNote?`<div class="men" style="margin-top:16px"><b>Ajustement du programme :</b> ${overrideNote}</div>`:''}
+  ${dailyCard()}
+  <h2>Choisis ta séance</h2>
+  ${Object.entries(PROGS).map(([k,p])=>`<button class="prog" data-p="${k}"><div class="dot" style="background:${C[p.z]}">${p.l}</div><div><h3>${p.n}</h3><p>${p.d}<br>≈ ${estMin(p)} min · ${p.items.filter(x=>x[1][level]).length} exercices</p></div><span class="go">›</span></button>`).join('')}
+  <div class="note"><b>Règles pour ton ménisque</b><br>• Genou chargé : jamais au-delà de 60–70° de flexion (pas de squat profond, pas de fente, ne pas s'accroupir).<br>• Pas de rotation du genou quand le pied est au sol.<br>• Pas d'impact : ni course ni sauts pour l'instant.<br>• Une gêne ≤ 3/10 qui disparaît en 24 h, c'est acceptable.<br><br><b>Rythme :</b> 3 séances par semaine, en alternant Genou, Dos et Complète, plus de la marche quand tu veux.<br><b>Phase 2</b> seulement quand, depuis 2 semaines : pas de gonflement après les séances, genou qui se tend complètement, marche normale et douleur ≤ 2/10.<br><br>Cette appli ne remplace pas un kiné. Pour une fissure complexe, fais valider le programme par lui ou par ton chirurgien. Si tu es opéré, suis le protocole post-opératoire qu'on te donne.</div>`;
+  app.querySelector('#alertBtn').onclick=alertSheet;
+  bindDaily();
+  app.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{level=+b.dataset.l;S.set('lvl',level);home()});
+  app.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>start(b.dataset.p));
+}
+function dailyCard(){
+  const d=S.get('suivi',[]).find(x=>x.jour===today())||{};
+  return `<div class="card"><h3>Mon genou aujourd'hui</h3>
+  <div class="lbl">Douleur au repos / dans la journée</div>
+  <div class="scale" id="dPain">${[...Array(11)].map((_,i)=>`<button data-v="${i}" class="${d.douleur===i?'on':''}">${i}</button>`).join('')}</div>
+  <div class="lbl">Gonflement</div>
+  <div class="chips" id="dSw">${['aucun','léger','net'].map(v=>`<button data-v="${v}" class="${d.gonflement===v?'on':''}">${v}</button>`).join('')}</div>
+  <div class="lbl">Symptômes</div>
+  <div class="chips" id="dSy">${['blocage','dérobement','raideur matin'].map(v=>`<button data-v="${v}" class="${(d.symptomes||[]).includes(v)?'on':''}">${v}</button>`).join('')}</div>
+  ${d.gonflement==='net'||(d.symptomes||[]).some(x=>x!=='raideur matin')?'<div class="men" style="margin-top:12px">⚠ Pas de séance genou aujourd’hui : préviens ton kiné, surtout en cas de blocage ou de dérobement.</div>':''}
+  </div>`;
+}
+function setDaily(patch){
+  const all=S.get('suivi',[]);let d=all.find(x=>x.jour===today());
+  if(!d){d={id:'j'+today(),jour:today(),date:new Date().toISOString()};all.push(d)}
+  Object.assign(d,patch,{date:new Date().toISOString()});S.set('suivi',all);home();clearTimeout(setDaily._t);setDaily._t=setTimeout(()=>sync(),1500);
+}
+function bindDaily(){
+  app.querySelectorAll('#dPain button').forEach(b=>b.onclick=()=>setDaily({douleur:+b.dataset.v}));
+  app.querySelectorAll('#dSw button').forEach(b=>b.onclick=()=>setDaily({gonflement:b.dataset.v}));
+  app.querySelectorAll('#dSy button').forEach(b=>b.onclick=()=>{const d=S.get('suivi',[]).find(x=>x.jour===today())||{};let s=d.symptomes||[];s=s.includes(b.dataset.v)?s.filter(x=>x!==b.dataset.v):[...s,b.dataset.v];setDaily({symptomes:s})});
+}
+function settings(){
+  app.innerHTML=`<h1>Réglages</h1><p class="sub">Synchronisation avec ton dépôt GitHub privé.</p>
+  <div class="card"><h3>Token GitHub</h3>
+  <p style="font-size:13px;color:var(--muted);line-height:1.5">Token « fine-grained » avec accès <b>Contents : Read and write</b> sur le seul dépôt <b>${GH.repo}</b>. Il reste stocké sur ce téléphone.</p>
+  <div style="height:10px"></div><input type="password" id="tk" placeholder="github_pat_…" value="${tok()?'••••••••':''}">
+  <div class="chips" style="margin-top:10px"><button id="tkSave" class="on">Enregistrer</button><button id="syncNow">Synchroniser maintenant</button>${tok()?'<button id="tkDel">Supprimer le token</button>':''}</div>
+  ${syncLine()}</div>
+  <div class="card"><h3>Données</h3><p style="font-size:13px;color:var(--muted);line-height:1.5">${S.get('hist',[]).length} séances et ${S.get('suivi',[]).length} jours de suivi enregistrés. Fichier : <b>${GH.repo}/${GH.file}</b>.</p></div>`;
+  app.querySelector('#tkSave').onclick=()=>{const v=app.querySelector('#tk').value.trim();if(v&&!v.startsWith('•')){S.set('ghToken',v);sync(true)}};
+  app.querySelector('#syncNow').onclick=()=>sync(true);
+  const del=app.querySelector('#tkDel');if(del)del.onclick=()=>{S.set('ghToken','');settings()};
+}
+function alertSheet(){
+  const m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<div class="sheet"><h3>Signaux d'alerte</h3>
+  <h4>Arrête et consulte rapidement si :</h4><ul>
+  <li>le genou se <b>bloque</b> (impossible de le tendre ou de le plier, sensation que quelque chose coince)</li>
+  <li>le genou <b>se dérobe</b> (il lâche sous toi)</li>
+  <li>il <b>gonfle nettement</b> après une séance ou le lendemain</li>
+  <li>la douleur est vive, augmente d'une séance à l'autre ou dure plus de 24 h</li></ul>
+  <h4>Ajuste la séance si :</h4><ul>
+  <li>la douleur pendant la séance dépasse 3/10 : réduis l'amplitude, les répétitions, ou supprime l'exercice</li>
+  <li>tu as un léger gonflement : reviens en phase 1 et prends 1 jour de repos en plus</li>
+  <li>tu sens un « clic » douloureux sur un mouvement : sors-le du programme et parles-en à ton kiné</li></ul>
+  <h4>À éviter pour l'instant</h4><ul>
+  <li>Squat profond, fentes, s'accroupir, s'asseoir sur les talons</li>
+  <li>Pivoter sur la jambe droite (sports de pivot, changements de direction)</li>
+  <li>Course, sauts</li>
+  <li>Machine à extension de jambes avec charge</li></ul>
+  <button class="btn main" style="width:100%;max-width:none;margin-top:18px">Compris</button></div>`;
+  m.onclick=e=>{if(e.target===m||e.target.tagName==='BUTTON')m.remove()};document.body.appendChild(m);
+}
+function lib(){
+  const list=Object.entries(EX).filter(([,e])=>libF==='all'||e.z===libF);
+  app.innerHTML=`<h1>Exercices</h1><p class="sub">Touche un exercice pour voir les consignes.</p><div style="height:16px"></div>
+  <div class="filter">${[['all','Tous'],['knee','Genou'],['back','Dos'],['cardio','Cardio']].map(([k,l])=>`<button data-f="${k}" class="${libF===k?'on':''}">${l}</button>`).join('')}</div>
+  ${list.map(([,e])=>`<details class="ex"><summary><span class="tag" style="background:${C[e.z]}">${ZL[e.z]}</span>${e.n}<span class="equip">${e.eq}</span></summary><div class="body">${e.d}<ul>${e.c.map(x=>`<li>${x}</li>`).join('')}</ul>${e.m?`<div class="men"><b>Ménisque :</b> ${e.m}</div>`:''}${e.w?`<div class="warn">⚠ ${e.w}</div>`:''}</div></details>`).join('')}`;
+  app.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{libF=b.dataset.f;lib()});
+}
+function hist(){
+  const h=S.get('hist',[]).slice().reverse();
+  app.innerHTML=`<h1>Historique</h1>${syncLine()}<div style="height:16px"></div>
+  ${h.length?h.map(x=>`<details class="hist"><summary><div class="hrow"><div><b>${x.programme||x.prog}</b> · Phase ${x.phase}${x.interrompue?' · <span style="color:var(--knee)">interrompue</span>':''}<small>${new Date(x.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</small></div><div style="text-align:right">${Math.round((x.duree_s||0)/60)} min<small>${x.douleur!=null?'douleur '+x.douleur+'/10':''}</small></div></div></summary>
+  <div class="hdet">${(x.exercices||[]).map(e=>`${e.series_faites>=e.series_prevues?'✓':e.series_faites?'◐':'✕'} ${e.nom} — ${e.series_faites}/${e.series_prevues}${e.douleur?' · <span style="color:var(--knee)">douloureux</span>':''}`).join('<br>')}${x.note?`<br><i>« ${x.note} »</i>`:''}</div></details>`).join(''):'<div class="empty">Pas encore de séance. Lance-toi !</div>'}`;
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
+
+/* ---------- Lecteur de séance ---------- */
+const P=document.getElementById('player');
+let track={},painEx={},steps=[],idx=0,remain=0,total=0,running=false,tick=null,last=0,curProg=null,startT=0,ac=null,wl=null;
+function buildSteps(k){
+  const out=[];const p=PROGS[k];
+  const its=p.items.filter(x=>x[1][level]);its.forEach(([id,se,r,rest],bi)=>{
+    const e=EX[id];const n=se[level];const v=r[level];if(!n)return;
+    for(let s=1;s<=n;s++){
+      out.push({kind:'work',id,e,set:s,sets:n,v,side:e.side,bi});
+      const last=s===n&&bi===its.length-1;
+      if(!last){const rs=s<n?rest:30; if(rs>0)out.push({kind:'rest',v:rs,label:s<n?'Repos':'Transition'});}
+    }
+  });
+  return out;
+}
+function beep(f=880,d=.15){try{if(!ac)return;const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.25,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+async function start(k){
+  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
+  try{wl=await navigator.wakeLock?.request('screen')}catch(e){}
+  curProg=k;steps=buildSteps(k);idx=0;track={};painEx={};startT=Date.now();P.classList.add('show');load();
+}
+function isTimed(st){return st.kind==='rest'||st.e.t==='time'}
+function load(){
+  const st=steps[idx];
+  total=remain=isTimed(st)?st.v*(st.kind==='work'&&st.side?2:1):0;
+  running=isTimed(st)&&st.kind==='rest';
+  if(st.kind==='work'&&isTimed(st))running=false;
+  draw();loop();
+}
+function loop(){clearInterval(tick);last=Date.now();tick=setInterval(()=>{
+  const now=Date.now(),dt=(now-last)/1000;last=now;if(!running||!total)return;
+  const before=Math.ceil(remain);remain=Math.max(0,remain-dt);const after=Math.ceil(remain);
+  const st=steps[idx];
+  if(st.side&&st.kind==='work'&&before>total/2&&after<=total/2&&after>0){beep(660,.3)}
+  if(after!==before&&after<=3&&after>0)beep(660);
+  if(remain<=0){beep(990,.35);markDone();next();return}
+  updRing();
+},100)}
+function fmt(s){s=Math.ceil(s);const m=Math.floor(s/60),r=s%60;return m?`${m}:${String(r).padStart(2,'0')}`:`${r}`}
+function nextWork(){for(let i=idx+1;i<steps.length;i++)if(steps[i].kind==='work')return steps[i];return null}
+function draw(){
+  const st=steps[idx];const pct=idx/steps.length*100;const nw=nextWork();
+  let body;
+  if(st.kind==='rest'){
+    body=`<div class="rest"><div class="phase">${st.label}</div><div class="pname">Récupère</div>${ring()}${nw?`<div class="next">Ensuite : <b>${nw.e.n}</b>${nw.sets>1?` · série ${nw.set}/${nw.sets}`:''}</div>`:''}</div>`;
+  }else{
+    const e=st.e;const timed=e.t==='time';
+    const unit=e.u||'reps';
+    const target=timed?'':`<div class="ring"><div class="val" style="position:static;height:100%">${st.v}<small>${unit}${st.side?' par côté':''}</small></div></div>`;
+    const sideTxt=timed&&st.side?' · change de côté à la moitié':'';
+    body=`<div class="phase" style="color:${C[e.z]}">${ZL[e.z]} · ${e.eq}</div><div class="pname">${e.n}</div>
+    <div class="pset">${st.sets>1?`Série ${st.set} / ${st.sets}`:''}${sideTxt}</div>
+    ${timed?ring():target}
+    <ul class="cues">${e.c.map(x=>`<li>• ${x}</li>`).join('')}</ul>${e.m?`<div class="men pm">${e.m}</div>`:''}`;
+  }
+  const timed=isTimed(st);
+  P.innerHTML=`<div class="ptop"><button id="quit">✕ Quitter</button><span style="font-size:13px;color:var(--muted)">${PROGS[curProg].n}</span><button id="prev">‹ Préc.</button></div>
+  <div class="bar"><div style="width:${pct}%"></div></div>
+  <div class="pmain">${body}</div>
+  <div class="pctl">${st.kind==='work'?`<button class="btn" id="hurt" style="${painEx[st.bi]?'background:var(--knee);color:#fff':''}" title="Signaler une douleur">⚠</button>`:''}${timed?`<button class="btn" id="skip">Passer</button><button class="btn main" id="tog">${running?'Pause':(remain<total?'Reprendre':'Démarrer')}</button>`:`<button class="btn main" id="ok">Série faite ✓</button>`}</div>`;
+  P.querySelector('#quit').onclick=()=>{if(P.querySelector('#quit').dataset.c){Object.keys(track).length?finish(true):stop()}else{P.querySelector('#quit').dataset.c=1;P.querySelector('#quit').textContent='Confirmer ?'}};
+  P.querySelector('#prev').onclick=()=>{if(idx>0){idx--;load()}};
+  P.querySelector('#skip')&&(P.querySelector('#skip').onclick=next);
+  P.querySelector('#ok')&&(P.querySelector('#ok').onclick=()=>{beep(990);markDone();next()});
+  P.querySelector('#tog')&&(P.querySelector('#tog').onclick=()=>{running=!running;P.querySelector('#tog').textContent=running?'Pause':'Reprendre'});
+  const hu=P.querySelector('#hurt');if(hu)hu.onclick=()=>{painEx[st.bi]=!painEx[st.bi];hu.style.background=painEx[st.bi]?'var(--knee)':'';hu.style.color=painEx[st.bi]?'#fff':'';toast(painEx[st.bi]?'Douleur notée sur cet exercice':'Douleur retirée')};
+  updRing();
+}
+const R=100,CIRC=2*Math.PI*R;
+function ring(){return `<div class="ring"><svg width="230" height="230"><circle cx="115" cy="115" r="${R}" fill="none" stroke="var(--line)" stroke-width="12"/><circle id="arc" cx="115" cy="115" r="${R}" fill="none" stroke="var(--ink)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${CIRC}" stroke-dashoffset="0"/></svg><div class="val"><div><span id="tv">${fmt(remain)}</span><small id="ts"></small></div></div></div>`}
+function updRing(){
+  const a=document.getElementById('arc');if(!a)return;
+  a.style.strokeDashoffset=CIRC*(1-remain/total);
+  document.getElementById('tv').textContent=fmt(remain);
+  const st=steps[idx];const ts=document.getElementById('ts');
+  if(st.kind==='work'&&st.side)ts.textContent=remain>total/2?'côté 1':'côté 2';
+  else if(st.kind==='work'&&total>=120)ts.textContent='minutes';
+}
+function markDone(){const st=steps[idx];if(st&&st.kind==='work')track[idx]=1}
+function next(){if(idx<steps.length-1){idx++;load()}else finish()}
+function finish(partial){
+  clearInterval(tick);running=false;const dur=Math.round((Date.now()-startT)/1000);let pain=null;
+  P.innerHTML=`<div class="ptop"><span></span></div><div class="pmain done"><div class="phase">${partial?'Séance interrompue':'Terminé'}</div><h2>${partial?'Pas grave !':'Bravo !'}</h2><p class="sub">${PROGS[curProg].n} · ${Math.round(dur/60)} min</p>
+  <p style="margin-top:24px;font-weight:600">Douleur ressentie pendant la séance ?</p>
+  <div class="pain">${[...Array(11)].map((_,i)=>`<button data-v="${i}">${i}</button>`).join('')}</div>
+  <p class="sub" style="font-size:13px">0 = aucune · 10 = maximale</p>
+  <textarea id="note" placeholder="Une remarque ? (exercice difficile, sensation, consigne du kiné…)" style="margin-top:16px;max-width:420px"></textarea></div>
+  <div class="pctl"><button class="btn main" id="save">Enregistrer</button></div>`;
+  P.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{pain=+b.dataset.v;P.querySelectorAll('[data-v]').forEach(x=>x.classList.toggle('on',x===b))});
+  P.querySelector('#save').onclick=()=>{
+    const ex={};steps.forEach((st,i)=>{if(st.kind!=='work')return;const k=st.bi;ex[k]=ex[k]||{id:st.id,nom:st.e.n,series_prevues:st.sets,series_faites:0,valeur:st.v,unite:st.e.t==='time'?'s':(st.e.u||'reps'),par_cote:!!st.side};if(track[i])ex[k].series_faites++;if(painEx[k])ex[k].douleur=true});
+    const rec={id:uid(),date:new Date(startT).toISOString(),prog:curProg,programme:PROGS[curProg].n,phase:level+1,duree_s:dur,douleur:pain,interrompue:!!partial,exercices:Object.values(ex),note:P.querySelector('#note').value.trim()||undefined};
+    const h=S.get('hist',[]);h.push(rec);S.set('hist',h);stop();tab='home';render();sync();
+  };
+}
+function stop(){clearInterval(tick);running=false;P.classList.remove('show');try{wl?.release()}catch(e){}}
+applyOverride(S.get('progOverride',null));
+render();
+sync();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
