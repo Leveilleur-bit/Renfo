@@ -22,6 +22,7 @@ Matériel : élastique, tapis de marche, rameur. Suivi du poids intégré. Thèm
   "taille_cm": 178, "annee_naissance": 1980, "questions_kine": "…",
   "ajustements": {"pont": {"d": 2, "s": 0, "vu": "ISO"}},
   "cuisses": [{"id": "c2026-11-14", "jour": "2026-11-14", "droite_cm": 52, "gauche_cm": 54.5}],
+  "quotidien": [{"id": "q2026-11-14", "jour": "2026-11-14", "score": 34, "reponses": {"escMontee": 1, "escDescente": 2, "chaiseBasse": 1, "marche30": 0, "pivot": 3, "sommeil": 1, "assis": 2, "ramasser": 1}}],
   "tests": [{"id": "t2026-11-14", "jour": "2026-11-14", "assis30": 11, "chaise_s": 45, "equi_d_s": 18, "equi_g_s": 40, "douleur": 1}],
   "poids": [{"id": "p2026-11-14", "jour": "2026-11-14", "kg": 83.2, "supprime": false}]
 }
@@ -44,6 +45,7 @@ Lu par l'appli à chaque synchro, il ajuste le programme sans toucher au code.
 }
 ```
 Format d'un item : `[id_exercice, [séries phase1, phase2], [reps ou secondes phase1, phase2], repos_s]`.
+Zones : `knee|back|cardio|stretch`. Programmes d'étirements : `etirJambes`, `etirDos` (`etir: true`) ; les séances Genou, Dos, Complète et Cardio se terminent par un retour au calme.
 Un exercice nouveau peut être défini dans `exercices` avec `n` (nom), `z` (`knee|back|cardio`), `eq`, `t` (`reps|time`), `d`, `c` (consignes), `m` (note ménisque), `w` (alerte), `side` (par côté).
 
 ## Token
