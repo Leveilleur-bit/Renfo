@@ -138,6 +138,8 @@ textarea{min-height:70px;resize:vertical}
 .wrow input{flex:1}
 .wlist div{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:15px}
 .wlist button{color:var(--muted);font-size:13px}
+.syncb{display:inline-flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted);text-align:left;line-height:1.3}
+.dotc{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -222,6 +224,10 @@ function b64d(b){return decodeURIComponent(escape(atob(b.replace(/\n/g,''))))}
 function toast(t){let e=document.querySelector('.toast');if(!e){e=document.createElement('div');e.className='toast';document.body.appendChild(e)}e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2500)}
 function mergeById(a,b){const m={};[...a,...b].forEach(x=>{if(x&&x.id)m[x.id]=Object.assign(m[x.id]||{},x)});return Object.values(m).sort((x,y)=>(x.date||'').localeCompare(y.date||''))}
 let syncing=false;
+const KEYS=[['seances','hist'],['suivi','suivi'],['poids','poids'],['cuisses','cuisses'],['tests','tests']];
+function localHash(){return JSON.stringify([...KEYS.map(([,l])=>S.get(l,[])),S.get('taille',null)])}
+function pending(){return localHash()!==S.get('syncedHash','')}
+function ghErr(st){return st===401?"Token invalide ou expiré : crée-en un nouveau (Réglages)":st===403?"Le token n'a pas le droit d'écrire : mets Contents sur « Read and write »":st===404?`Le token n'a pas accès au dépôt ${GH.repo} : vérifie « Repository access »`:st===0?'Pas de réseau':'Erreur GitHub '+st}
 async function sync(manual){
   if(!tok()){if(manual)toast('Ajoute ton token dans Réglages');return}
   if(syncing)return;syncing=true;
@@ -229,8 +235,7 @@ async function sync(manual){
     let remote={seances:[],suivi:[]},sha=null;
     const r=await fetch(url(GH.file)+'?ref='+GH.branch+'&t='+Date.now(),{headers:hdr(),cache:'no-store'});
     if(r.ok){const j=await r.json();sha=j.sha;try{remote=JSON.parse(b64d(j.content))}catch(e){}}
-    else if(r.status!==404)throw new Error('GitHub '+r.status);
-    const KEYS=[['seances','hist'],['suivi','suivi'],['poids','poids'],['cuisses','cuisses'],['tests','tests']];
+    else if(r.status!==404)throw new Error(ghErr(r.status));
     const merged={app:'Renfo genou & dos',profil:'Fissure complexe ménisque interne droit, non opéré, suivi kiné (vendredi)',maj:new Date().toISOString()};
     KEYS.forEach(([r,l])=>merged[r]=mergeById(remote[r]||[],S.get(l,[])));
     merged.taille_cm=S.get('taille',null)||remote.taille_cm||null;
@@ -239,14 +244,14 @@ async function sync(manual){
       const body={message:'séances '+new Date().toISOString().slice(0,16),content:b64e(JSON.stringify(merged,null,1)),branch:GH.branch};if(sha)body.sha=sha;
       const p=await fetch(url(GH.file),{method:'PUT',headers:hdr(),body:JSON.stringify(body)});
       if(p.status===409){syncing=false;return sync(manual)}
-      if(!p.ok)throw new Error('GitHub '+p.status);
+      if(!p.ok)throw new Error(ghErr(p.status));
     }
     KEYS.forEach(([r,l])=>S.set(l,merged[r]));if(merged.taille_cm)S.set('taille',merged.taille_cm);
-    syncState={ok:Date.now()};S.set('syncState',syncState);
+    S.set('syncedHash',localHash());syncState={ok:Date.now()};S.set('syncState',syncState);
     await loadProgramme();
     if(manual)toast('Synchronisé ✓');
-  }catch(e){syncState={err:String(e.message||e),at:Date.now()};S.set('syncState',syncState);if(manual)toast('Échec synchro : '+syncState.err)}
-  syncing=false;if(!document.getElementById('player').classList.contains('show'))render();
+  }catch(e){syncState={err:(e instanceof TypeError)?(navigator.onLine?'GitHub injoignable':'Pas de réseau'):String(e.message||e),at:Date.now()};S.set('syncState',syncState);if(manual)toast('Échec synchro : '+syncState.err)}
+  syncing=false;if(!document.getElementById('player').classList.contains('show')&&!document.querySelector('.modal')&&tab!=='set')render();
 }
 /* programme.json (facultatif, dans le dépôt privé) : ajustements de Claude ou du kiné */
 async function loadProgramme(){
@@ -262,11 +267,33 @@ function applyOverride(j){
   if(j.programmes)Object.entries(j.programmes).forEach(([k,v])=>{if(v===null)delete PROGS[k];else PROGS[k]=Object.assign(PROGS[k]||{},v)});
   overrideNote=j.message||'';
 }
+function tokExp(){const c=S.get('connTest',null);if(c&&c.exp)return new Date(c.exp);const d=S.get('tokDate',null);return d?new Date(d+366*864e5):null}
 function syncLine(){
-  if(!tok())return '<div class="sync err">Synchro GitHub non configurée (Réglages)</div>';
-  if(syncState.err)return `<div class="sync err">Synchro en échec : ${syncState.err}</div>`;
-  if(syncState.ok)return `<div class="sync">Synchronisé ${new Date(syncState.ok).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>`;
-  return '';
+  let col,txt;const pend=pending();const exp=tokExp();const days=exp?Math.round((exp-Date.now())/864e5):null;
+  if(!tok()){col='#e07a62';txt='Non connecté à GitHub · touche pour configurer'}
+  else if(syncState.err){col='#e07a62';txt='Synchro en échec : '+syncState.err}
+  else if(pend){col='#e0a85a';txt='Modifications en attente d’envoi…'}
+  else if(syncState.ok){col='#7fbf6a';txt='Connecté · synchronisé '+new Date(syncState.ok).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+  else{col='#e0a85a';txt='Connexion en cours…'}
+  const warn=tok()&&days!=null&&days<=30?`<div class="sync" style="color:#e0a85a">Le token expire dans ${Math.max(0,days)} jours : pense à le renouveler.</div>`:'';
+  return `<button class="syncb" onclick="tab='set';render()"><span class="dotc" style="background:${col};box-shadow:0 0 8px ${col}"></span>${txt}</button>${warn}`;
+}
+let lastTestHtml='';
+async function testConn(){
+  const box=document.getElementById('ctest');const steps=[];
+  const draw=(done)=>{if(box)box.innerHTML=steps.map(x=>`<div style="margin:4px 0">${x.ok===null?'⏳':x.ok?'✅':'❌'} ${x.t}${x.d?`<br><small style="color:var(--muted)">${x.d}</small>`:''}</div>`).join('')+(done?`<div style="margin-top:8px;font-weight:600;color:${steps.every(x=>x.ok)?'#7fbf6a':'#e07a62'}">${steps.every(x=>x.ok)?'Tout fonctionne : tes données arrivent bien sur GitHub.':'Connexion incomplète : corrige le point en rouge.'}</div>`:'')};
+  const step=async(t,fn)=>{const x={t,ok:null};steps.push(x);draw();try{const d=await fn();x.ok=true;if(d)x.d=d}catch(e){x.ok=false;x.d=e.message||String(e)}draw();return x.ok};
+  let exp=null;
+  if(!tok()){steps.push({t:'Token',ok:false,d:'Aucun token enregistré'});draw(true);return}
+  const ok1=await step('Réseau et token reconnus par GitHub',async()=>{const r=await fetch('https://api.github.com/user',{headers:hdr(),cache:'no-store'}).catch(()=>{throw new Error(ghErr(0))});if(!r.ok)throw new Error(ghErr(r.status));const h=r.headers.get('github-authentication-token-expiration');if(h)exp=new Date(h.replace(' UTC','Z').replace(' ','T')).getTime();const j=await r.json();return 'Compte : '+j.login});
+  const ok2=ok1&&await step(`Accès au dépôt privé ${GH.repo}`,async()=>{const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}`,{headers:hdr(),cache:'no-store'});if(!r.ok)throw new Error(ghErr(r.status));const j=await r.json();return j.private?'Dépôt privé ✓':'Attention : le dépôt est public'});
+  const ok3=ok2&&await step('Écriture autorisée (test enregistré dans connexion.json)',async()=>{
+    let sha=null;const g=await fetch(url('connexion.json')+'?ref='+GH.branch+'&t='+Date.now(),{headers:hdr(),cache:'no-store'});if(g.ok)sha=(await g.json()).sha;
+    const body={message:'test de connexion',content:b64e(JSON.stringify({dernier_test:new Date().toISOString(),appareil:navigator.userAgent.slice(0,120)},null,1)),branch:GH.branch};if(sha)body.sha=sha;
+    const p=await fetch(url('connexion.json'),{method:'PUT',headers:hdr(),body:JSON.stringify(body)});if(!p.ok)throw new Error(ghErr(p.status));});
+  ok3&&await step('Synchronisation des données',async()=>{await sync();if(syncState.err)throw new Error(syncState.err);return `${S.get('hist',[]).filter(x=>!x.supprime).length} séances, ${S.get('poids',[]).filter(x=>!x.supprime).length} pesées à jour`});
+  if(exp)steps.push({t:'Expiration du token',ok:true,d:new Date(exp).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})});
+  S.set('connTest',{date:Date.now(),ok:steps.every(x=>x.ok),exp});{const f=steps.find(x=>!x.ok);if(f){syncState={err:f.d||f.t,at:Date.now()};S.set('syncState',syncState)}}draw(true);lastTestHtml=box?box.innerHTML:'';if(tab==='set')settings();
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
@@ -470,11 +497,15 @@ function settings(){
   <p style="font-size:13px;color:var(--muted);line-height:1.5">Token « fine-grained » avec accès <b>Contents : Read and write</b> sur le seul dépôt <b>${GH.repo}</b>. Il reste stocké sur ce téléphone.</p>
   <div style="height:10px"></div><input type="password" id="tk" placeholder="github_pat_…" value="${tok()?'••••••••':''}">
   <div class="chips" style="margin-top:10px"><button id="tkSave" class="on">Enregistrer</button><button id="syncNow">Synchroniser maintenant</button>${tok()?'<button id="tkDel">Supprimer le token</button>':''}</div>
-  ${syncLine()}</div>
+  </div>
+  <div class="card"><h3>État de la connexion</h3>${syncLine()}
+  <div class="chips" style="margin-top:12px"><button id="tConn" class="on">Tester la connexion</button></div>
+  <div id="ctest" style="margin-top:10px;font-size:14px;line-height:1.4">${lastTestHtml||(()=>{const c=S.get('connTest',null);return c?`<span style="color:var(--muted)">Dernier test le ${new Date(c.date).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})} : ${c.ok?'✅ tout fonctionnait':'❌ problème détecté'}</span>`:''})()}</div></div>
   <div class="card"><h3>Données</h3><p style="font-size:13px;color:var(--muted);line-height:1.5">${S.get('hist',[]).length} séances, ${S.get('suivi',[]).length} jours de suivi et ${S.get('poids',[]).filter(x=>!x.supprime).length} pesées, ${S.get('cuisses',[]).filter(x=>!x.supprime).length} mesures de cuisses et ${S.get('tests',[]).filter(x=>!x.supprime).length} tests enregistrés. Fichier : <b>${GH.repo}/${GH.file}</b>.</p></div>`;
-  app.querySelector('#tkSave').onclick=()=>{const v=app.querySelector('#tk').value.trim();if(v&&!v.startsWith('•')){S.set('ghToken',v);sync(true)}};
-  app.querySelector('#syncNow').onclick=()=>sync(true);
-  const del=app.querySelector('#tkDel');if(del)del.onclick=()=>{S.set('ghToken','');settings()};
+  app.querySelector('#tkSave').onclick=()=>{const v=app.querySelector('#tk').value.trim();if(v&&!v.startsWith('•')){S.set('ghToken',v);S.set('tokDate',Date.now());S.set('connTest',null);settings();testConn()}};
+  app.querySelector('#tConn').onclick=testConn;
+  app.querySelector('#syncNow').onclick=()=>sync(true).then(()=>{if(tab==='set')settings()});
+  const del=app.querySelector('#tkDel');if(del)del.onclick=()=>{S.set('ghToken','');S.set('connTest',null);settings()};
 }
 function alertSheet(){
   const m=document.createElement('div');m.className='modal';
@@ -615,6 +646,8 @@ applyOverride(S.get('progOverride',null));
 render();
 sync();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+window.addEventListener('online',()=>sync());
+setInterval(()=>{if(tok()&&pending()&&navigator.onLine&&!document.hidden)sync()},60000);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
