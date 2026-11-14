@@ -20,9 +20,13 @@ Matériel : élastique, tapis de marche, rameur. Suivi du poids intégré. Thèm
   "suivi": [{"id": "j2026-11-14", "jour": "2026-11-14", "douleur": 2,
              "gonflement": "aucun|léger|net", "symptomes": ["blocage", "dérobement", "raideur matin"]}],
   "taille_cm": 178,
+  "cuisses": [{"id": "c2026-11-14", "jour": "2026-11-14", "droite_cm": 52, "gauche_cm": 54.5}],
+  "tests": [{"id": "t2026-11-14", "jour": "2026-11-14", "assis30": 11, "chaise_s": 45, "equi_d_s": 18, "equi_g_s": 40, "douleur": 1}],
   "poids": [{"id": "p2026-11-14", "jour": "2026-11-14", "kg": 83.2, "supprime": false}]
 }
 ```
+
+Séances saisies à la main (kiné du vendredi, marche…) : `manuel: true`, `prog` = `kine|libre|marche|rameur|autre`, champs `contenu`, `consignes` (kiné), `note`. Toute entrée peut porter `supprime: true`.
 
 ### `programme.json` (facultatif, écrit par Claude ou selon les consignes du kiné)
 Lu par l'appli à chaque synchro, il ajuste le programme sans toucher au code.

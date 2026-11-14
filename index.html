@@ -145,7 +145,7 @@ textarea{min-height:70px;resize:vertical}
 <nav class="tabs">
   <button data-tab="home" class="on"><i>◉</i>Séances</button>
   <button data-tab="lib"><i>☰</i>Exercices</button>
-  <button data-tab="poids"><i>⚖</i>Poids</button>
+  <button data-tab="poids"><i>⚖</i>Mesures</button>
   <button data-tab="hist"><i>↺</i>Historique</button>
   <button data-tab="set"><i>⚙</i>Réglages</button>
 </nav>
@@ -230,18 +230,18 @@ async function sync(manual){
     const r=await fetch(url(GH.file)+'?ref='+GH.branch+'&t='+Date.now(),{headers:hdr(),cache:'no-store'});
     if(r.ok){const j=await r.json();sha=j.sha;try{remote=JSON.parse(b64d(j.content))}catch(e){}}
     else if(r.status!==404)throw new Error('GitHub '+r.status);
-    const local={seances:S.get('hist',[]),suivi:S.get('suivi',[]),poids:S.get('poids',[])};
-    const merged={app:'Renfo genou & dos',profil:'Fissure complexe ménisque interne droit, non opéré, suivi kiné',maj:new Date().toISOString(),
-      seances:mergeById(remote.seances||[],local.seances),suivi:mergeById(remote.suivi||[],local.suivi),poids:mergeById(remote.poids||[],local.poids)};
+    const KEYS=[['seances','hist'],['suivi','suivi'],['poids','poids'],['cuisses','cuisses'],['tests','tests']];
+    const merged={app:'Renfo genou & dos',profil:'Fissure complexe ménisque interne droit, non opéré, suivi kiné (vendredi)',maj:new Date().toISOString()};
+    KEYS.forEach(([r,l])=>merged[r]=mergeById(remote[r]||[],S.get(l,[])));
     merged.taille_cm=S.get('taille',null)||remote.taille_cm||null;
-    const changed=JSON.stringify({a:remote.seances,b:remote.suivi,c:remote.poids||[],d:remote.taille_cm||null})!==JSON.stringify({a:merged.seances,b:merged.suivi,c:merged.poids,d:merged.taille_cm});
+    const pick=o=>JSON.stringify([...KEYS.map(([r])=>o[r]||[]),o.taille_cm||null]);const changed=pick(remote)!==pick(merged);
     if(changed||!sha){
       const body={message:'séances '+new Date().toISOString().slice(0,16),content:b64e(JSON.stringify(merged,null,1)),branch:GH.branch};if(sha)body.sha=sha;
       const p=await fetch(url(GH.file),{method:'PUT',headers:hdr(),body:JSON.stringify(body)});
       if(p.status===409){syncing=false;return sync(manual)}
       if(!p.ok)throw new Error('GitHub '+p.status);
     }
-    S.set('hist',merged.seances);S.set('suivi',merged.suivi);S.set('poids',merged.poids);if(merged.taille_cm)S.set('taille',merged.taille_cm);
+    KEYS.forEach(([r,l])=>S.set(l,merged[r]));if(merged.taille_cm)S.set('taille',merged.taille_cm);
     syncState={ok:Date.now()};S.set('syncState',syncState);
     await loadProgramme();
     if(manual)toast('Synchronisé ✓');
@@ -276,22 +276,25 @@ const app=document.getElementById('app');
 function estMin(p){let s=0;p.items.forEach(([id,se,r,rest])=>{const e=EX[id];const n=se[level];if(!n)return;const w=e.t==='time'?r[level]:r[level]*4;s+=n*w*(e.side?2:1)+(n-1)*rest+(n>1||e.t!=='time'?20:0)});return Math.round(s/60)}
 function render(){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-  if(tab==='home')home(); else if(tab==='lib')lib(); else if(tab==='set')settings(); else if(tab==='poids')poids(); else hist();
+  if(tab==='home')home(); else if(tab==='lib')lib(); else if(tab==='set')settings(); else if(tab==='poids'){const m=S.get('mtab','poids');m==='cuisses'?cuisses():m==='tests'?tests():poids()} else hist();
   window.scrollTo(0,0);
 }
 function home(){
-  const h=S.get('hist',[]);const wk=Date.now()-7*864e5;
+  const h=S.get('hist',[]).filter(x=>!x.supprime);const wk=Date.now()-7*864e5;
   const rec=h.filter(x=>new Date(x.date).getTime()>wk);const thisWeek=rec.length;const mins=Math.round(rec.reduce((a,x)=>a+(x.duree_s||0),0)/60);
-  app.innerHTML=`<div class="hero">${CASTLE}<h1>Renfo</h1><div class="motto">Genou · Dos · Poids · IMC</div><p class="sub">Adapté à ta fissure du ménisque interne droit.</p>${syncLine()}<button id="alertBtn" class="alert">⚠ Signaux d'alerte : quand arrêter</button></div>
+  app.innerHTML=`<div class="hero">${CASTLE}<h1>Renfo</h1><div class="motto">Genou · Dos · Mesures</div><p class="sub">Adapté à ta fissure du ménisque interne droit.</p>${syncLine()}<button id="alertBtn" class="alert">⚠ Signaux d'alerte : quand arrêter</button></div>
   <div class="pill-row"><button data-l="0" class="${level==0?'on':''}">Phase 1 · Protection</button><button data-l="1" class="${level==1?'on':''}">Phase 2 · Renfo</button></div>
   <div class="stats"><div class="stat"><b>${thisWeek}</b><span>séances / 7 j</span></div><div class="stat"><b>${mins}</b><span>minutes / 7 j</span></div><div class="stat"><b>${h.length}</b><span>au total</span></div></div>
   ${overrideNote?`<div class="men" style="margin-top:16px"><b>Ajustement du programme :</b> ${overrideNote}</div>`:''}
+  ${remindCards()}
   ${dailyCard()}
   <h2>Choisis ta séance</h2>
   ${Object.entries(PROGS).map(([k,p])=>`<button class="prog" data-p="${k}"><div class="dot" style="background:${C[p.z]}">${p.l}</div><div><h3>${p.n}</h3><p>${p.d}<br>≈ ${estMin(p)} min · ${p.items.filter(x=>x[1][level]).length} exercices</p></div><span class="go">›</span></button>`).join('')}
   <div class="note"><b>Règles pour ton ménisque</b><br>• Genou chargé : jamais au-delà de 60–70° de flexion (pas de squat profond, pas de fente, ne pas s'accroupir).<br>• Pas de rotation du genou quand le pied est au sol.<br>• Pas d'impact : ni course ni sauts pour l'instant.<br>• Une gêne ≤ 3/10 qui disparaît en 24 h, c'est acceptable.<br><br><b>Rythme :</b> 3 séances par semaine, en alternant Genou, Dos et Complète, plus de la marche quand tu veux.<br><b>Phase 2</b> seulement quand, depuis 2 semaines : pas de gonflement après les séances, genou qui se tend complètement, marche normale et douleur ≤ 2/10.<br><br>Cette appli ne remplace pas un kiné. Pour une fissure complexe, fais valider le programme par lui ou par ton chirurgien. Si tu es opéré, suis le protocole post-opératoire qu'on te donne.</div>`;
   app.querySelector('#alertBtn').onclick=alertSheet;
   bindDaily();
+  const rk=app.querySelector('#rKine');if(rk)rk.onclick=()=>manualForm('kine');
+  const rt=app.querySelector('#rTest');if(rt)rt.onclick=()=>{tab='poids';S.set('mtab','tests');render()};
   app.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{level=+b.dataset.l;S.set('lvl',level);home()});
   app.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>start(b.dataset.p));
 }
@@ -333,7 +336,7 @@ function poids(){
   const ref=(days)=>{const lim=new Date(Date.now()-days*864e5).toISOString().slice(0,10);const v=all.filter(x=>x.jour<=lim);return v.length?v[v.length-1].kg:null};
   const d7=last&&ref(7)!=null?last.kg-ref(7):null, d30=last&&ref(30)!=null?last.kg-ref(30):null;
   const fmtD=v=>v==null?'–':(v>0?'+':'')+v.toFixed(1);
-  app.innerHTML=`<div class="hero"><h1 style="font-size:30px">Poids</h1><p class="sub">Une pesée par jour suffit, idéalement le matin.</p></div>
+  app.innerHTML=`${mHead('poids')}<p class="sub" style="text-align:center">Une pesée par jour suffit, idéalement le matin.</p>
   <div class="card"><h3>Nouvelle pesée</h3>
   <div class="wrow"><input type="text" inputmode="decimal" id="kg" placeholder="kg" value="${last?last.kg:''}"><input type="date" id="wd" value="${today()}" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"></div>
   <div class="chips" style="margin-top:10px"><button id="wSave" class="on">Enregistrer</button></div></div>
@@ -376,6 +379,91 @@ function wChart(all){
   ${d.map(x=>`<circle cx="${X(x)}" cy="${Y(x.kg)}" r="2.6" fill="var(--gold2)"/>`).join('')}
   <text x="${P}" y="${H-4}" fill="var(--muted)" font-size="10">${fd(d[0])}</text><text x="${W-8}" y="${H-4}" fill="var(--muted)" font-size="10" text-anchor="end">${fd(d[d.length-1])}</text></svg>`;
 }
+function mHead(act){
+  setTimeout(()=>app.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{S.set('mtab',b.dataset.m);render()}),0);
+  return `<div class="hero"><h1 style="font-size:30px">Mesures</h1></div><div class="pill-row" style="margin-bottom:14px">${[['poids','Poids & IMC'],['cuisses','Cuisses'],['tests','Tests']].map(([k,l])=>`<button data-m="${k}" class="${act===k?'on':''}">${l}</button>`).join('')}</div>`;
+}
+function num(id){const v=app.querySelector('#'+id);if(!v||v.value.trim()==='')return null;const n=parseFloat(v.value.replace(',','.'));return isNaN(n)?null:n}
+function dl(j){return new Date(j+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'})}
+function cuisses(){
+  const all=S.get('cuisses',[]).filter(x=>!x.supprime).sort((a,b)=>a.jour.localeCompare(b.jour));const last=all[all.length-1],first=all[0];
+  const diff=x=>x.droite_cm-x.gauche_cm;
+  app.innerHTML=`${mHead('cuisses')}
+  <div class="card"><h3>Comment mesurer</h3><p style="font-size:14px;line-height:1.5;color:var(--muted)">Allongé ou assis, jambe tendue et muscles relâchés. Mètre ruban <b>10 cm au-dessus du bord supérieur de la rotule</b>, bien à l'horizontale, sans serrer. Mesure toujours au même endroit et au même moment (le matin). Une fois toutes les 2 semaines suffit.</p></div>
+  <div class="card"><h3>Nouvelle mesure</h3>
+  <div class="wrow"><input type="text" inputmode="decimal" id="cD" placeholder="Droite (cm)"><input type="text" inputmode="decimal" id="cG" placeholder="Gauche (cm)"></div>
+  <div class="wrow" style="margin-top:8px"><input type="date" id="cDt" value="${today()}" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"><div class="chips" style="margin:0"><button id="cSave" class="on">Enregistrer</button></div></div></div>
+  ${last?`<div class="stats"><div class="stat"><b>${last.droite_cm.toFixed(1)}</b><span>droite (cm)</span></div><div class="stat"><b>${last.gauche_cm.toFixed(1)}</b><span>gauche (cm)</span></div><div class="stat"><b style="color:${diff(last)<=-1?'#e07a62':'var(--gold2)'}">${diff(last)>0?'+':''}${diff(last).toFixed(1)}</b><span>écart D − G</span></div></div>
+  <div class="card"><p style="font-size:14px;line-height:1.5">${diff(last)<=-1?`La cuisse droite est plus fine de ${Math.abs(diff(last)).toFixed(1)} cm : c'est courant après une lésion du ménisque, le quadriceps fond du côté blessé. L'objectif est de réduire cet écart.`:`L'écart entre les deux cuisses est faible : bon signe pour ton quadriceps droit.`}${all.length>1?` Depuis le ${dl(first.jour)}, l'écart est passé de ${diff(first).toFixed(1)} à ${diff(last).toFixed(1)} cm.`:''}</p></div>
+  <div class="card wlist"><h3>Mesures</h3>${all.slice().reverse().map(x=>`<div><span>${dl(x.jour)}</span><span>D ${x.droite_cm.toFixed(1)} · G ${x.gauche_cm.toFixed(1)} · <b>${diff(x)>0?'+':''}${diff(x).toFixed(1)}</b> &nbsp;<button data-delc="${x.id}">✕</button></span></div>`).join('')}</div>`:''}`;
+  app.querySelector('#cSave').onclick=()=>{const d=num('cD'),g=num('cG');if(!(d>20&&d<120&&g>20&&g<120)){toast('Entre les deux mesures en cm');return}
+    const j=app.querySelector('#cDt').value||today();const arr=S.get('cuisses',[]);const id='c'+j;const e=arr.find(x=>x.id===id);const rec={id,jour:j,droite_cm:d,gauche_cm:g,supprime:false,date:new Date().toISOString()};
+    e?Object.assign(e,rec):arr.push(rec);S.set('cuisses',arr);toast('Mesure enregistrée');cuisses();sync()};
+  app.querySelectorAll('[data-delc]').forEach(b=>b.onclick=()=>{const arr=S.get('cuisses',[]);const e=arr.find(x=>x.id===b.dataset.delc);if(e){e.supprime=true;e.date=new Date().toISOString()}S.set('cuisses',arr);cuisses();sync()});
+}
+const TESTS=[
+  {k:'assis30',n:"Assis-debout en 30 s",u:'reps',d:"Même chaise haute que d'habitude, bras croisés sur la poitrine. Compte le nombre de levers complets en 30 secondes.",chrono:30},
+  {k:'chaise_s',n:"Chaise contre le mur (30–45°)",u:'s',d:"Même angle que pendant les séances. Tiens le plus longtemps possible, arrête dès que la douleur dépasse 3/10. Maximum 120 s.",chrono:0},
+  {k:'equi_d_s',n:"Équilibre jambe droite",u:'s',d:"Yeux ouverts, mains sur les hanches, genou légèrement déverrouillé. Arrête quand l'autre pied touche le sol. Maximum 60 s.",chrono:0},
+  {k:'equi_g_s',n:"Équilibre jambe gauche",u:'s',d:"Même consigne, pour comparer avec la droite. Maximum 60 s.",chrono:0},
+];
+function lastTest(){const t=S.get('tests',[]).filter(x=>!x.supprime).sort((a,b)=>a.jour.localeCompare(b.jour));return t[t.length-1]}
+let chronoT=null;
+function tests(){
+  const all=S.get('tests',[]).filter(x=>!x.supprime).sort((a,b)=>a.jour.localeCompare(b.jour));const last=all[all.length-1],prev=all[all.length-2];
+  const due=!last||(Date.now()-new Date(last.jour+'T12:00'))/864e5>=28;
+  app.innerHTML=`${mHead('tests')}
+  <div class="card"><h3>${due?'Test du mois à faire':'Prochain test'}</h3><p style="font-size:14px;color:var(--muted);line-height:1.5">${last?`Dernier test le ${dl(last.jour)}. `:''}${due?'Fais ces 4 tests en début de séance, après 5 min de marche.':`À refaire vers le ${dl(new Date(new Date(last.jour+'T12:00').getTime()+28*864e5).toISOString().slice(0,10))}.`}</p></div>
+  <div class="card"><h3>Chrono</h3><div style="display:flex;align-items:center;gap:12px"><b id="chv" style="font-family:Cinzel,serif;font-size:34px;color:var(--gold2);min-width:90px">0</b><div class="chips" style="margin:0"><button id="ch30">30 s</button><button id="chGo">Démarrer</button><button id="chStop">Stop</button></div></div></div>
+  ${TESTS.map(t=>`<div class="card"><h3>${t.n}</h3><p style="font-size:14px;color:var(--muted);line-height:1.45">${t.d}</p>
+    <div class="wrow" style="margin-top:10px"><input type="text" inputmode="numeric" id="t_${t.k}" placeholder="${t.u==='s'?'secondes':'répétitions'}"><span style="color:var(--muted);font-size:14px;min-width:120px">${last&&last[t.k]!=null?`dernier : ${last[t.k]}${t.u==='s'?' s':''}${prev&&prev[t.k]!=null?` (${last[t.k]-prev[t.k]>=0?'+':''}${last[t.k]-prev[t.k]})`:''}`:''}</span></div></div>`).join('')}
+  <div class="card"><div class="lbl" style="margin-top:0">Douleur pendant les tests</div><div class="scale" id="tPain">${[...Array(11)].map((_,i)=>`<button data-v="${i}">${i}</button>`).join('')}</div>
+  <div class="chips" style="margin-top:14px"><button id="tSaveT" class="on">Enregistrer les résultats</button></div></div>
+  ${all.length?`<div class="card wlist"><h3>Historique des tests</h3>${all.slice().reverse().map(x=>`<div><span>${dl(x.jour)}</span><span>${x.assis30??'–'} reps · mur ${x.chaise_s??'–'} s · D ${x.equi_d_s??'–'} s / G ${x.equi_g_s??'–'} s &nbsp;<button data-delt="${x.id}">✕</button></span></div>`).join('')}</div>`:''}`;
+  let tp=null;app.querySelectorAll('#tPain button').forEach(b=>b.onclick=()=>{tp=+b.dataset.v;app.querySelectorAll('#tPain button').forEach(x=>x.classList.toggle('on',x===b))});
+  const show=v=>{const e=app.querySelector('#chv');if(e)e.textContent=v};
+  const stopC=()=>{clearInterval(chronoT);chronoT=null};
+  app.querySelector('#ch30').onclick=()=>{try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}stopC();const t0=Date.now();beep(660);chronoT=setInterval(()=>{const r=Math.max(0,30-Math.floor((Date.now()-t0)/1000));show(r);if(r<=3&&r>0)beep(660,.08);if(r===0){beep(990,.4);stopC()}},250)};
+  app.querySelector('#chGo').onclick=()=>{try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}stopC();const t0=Date.now();beep(880);chronoT=setInterval(()=>show(Math.floor((Date.now()-t0)/1000)),200)};
+  app.querySelector('#chStop').onclick=()=>{stopC();beep(990)};
+  app.querySelector('#tSaveT').onclick=()=>{const rec={id:'t'+today(),jour:today(),date:new Date().toISOString(),douleur:tp,supprime:false};let n=0;TESTS.forEach(t=>{const v=num('t_'+t.k);if(v!=null){rec[t.k]=v;n++}});
+    if(!n){toast('Entre au moins un résultat');return}const arr=S.get('tests',[]);const e=arr.find(x=>x.id===rec.id);e?Object.assign(e,rec):arr.push(rec);S.set('tests',arr);stopC();toast('Tests enregistrés');tests();sync()};
+  app.querySelectorAll('[data-delt]').forEach(b=>b.onclick=()=>{const arr=S.get('tests',[]);const e=arr.find(x=>x.id===b.dataset.delt);if(e){e.supprime=true;e.date=new Date().toISOString()}S.set('tests',arr);tests();sync()});
+}
+function remindCards(){
+  let out='';const d=new Date();const h=S.get('hist',[]).filter(x=>!x.supprime);
+  const kineDone=h.some(x=>x.prog==='kine'&&(x.jour||x.date.slice(0,10))===today());
+  if(d.getDay()===5&&!kineDone)out+=`<button id="rKine" class="card" style="width:100%;text-align:left;display:block"><h3>⚕ Séance kiné aujourd'hui ?</h3><span style="color:var(--muted);font-size:14px">Note ce que vous avez fait et ses consignes.</span></button>`;
+  const lt=lastTest();if(!lt||(Date.now()-new Date(lt.jour+'T12:00'))/864e5>=28)out+=`<button id="rTest" class="card" style="width:100%;text-align:left;display:block"><h3>⚖ Test du mois</h3><span style="color:var(--muted);font-size:14px">${lt?'Ça fait 4 semaines : refais tes 4 tests.':'Fais tes premiers tests de référence (5 min).'}</span></button>`;
+  return out;
+}
+const MTYPES={kine:'Kiné',libre:'Séance libre',marche:'Marche',rameur:'Rameur',autre:'Autre'};
+function manualForm(type,editId){
+  const ex=editId?S.get('hist',[]).find(x=>x.id===editId):null;type=ex?ex.prog:type||'kine';
+  const m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<div class="sheet"><h3>${ex?'Modifier la séance':'Ajouter une séance'}</h3>
+  <div class="chips" id="mType">${Object.entries(MTYPES).map(([k,l])=>`<button data-v="${k}" class="${k===type?'on':''}">${l}</button>`).join('')}</div>
+  <div class="lbl">Date</div><input type="date" id="mDate" value="${ex?ex.jour||ex.date.slice(0,10):today()}" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit">
+  <div class="lbl">Durée (minutes)</div><input type="text" inputmode="numeric" id="mDur" value="${ex?Math.round((ex.duree_s||0)/60):''}" placeholder="ex. 45">
+  <div class="lbl">Ce que vous avez fait</div><textarea id="mCont" placeholder="ex. vélo 10 min, presse 0–60° 3×12, proprio sur plateau, massage…">${ex?.contenu||''}</textarea>
+  <div class="lbl" id="mConsL">Consignes du kiné</div><textarea id="mCons" placeholder="ex. augmenter le pont à 3×15, éviter le rameur cette semaine…">${ex?.consignes||''}</textarea>
+  <div class="lbl">Douleur pendant la séance</div><div class="scale" id="mPain">${[...Array(11)].map((_,i)=>`<button data-v="${i}" class="${ex&&ex.douleur===i?'on':''}">${i}</button>`).join('')}</div>
+  <div class="lbl">Ressenti / note</div><textarea id="mNote" style="min-height:50px">${ex?.note||''}</textarea>
+  <div class="chips" style="margin-top:16px"><button id="mSave" class="on">Enregistrer</button><button id="mCancel">Annuler</button>${ex?'<button id="mDel" style="color:#e07a62">Supprimer</button>':''}</div></div>`;
+  document.body.appendChild(m);
+  let t=type,pain=ex?ex.douleur:null;
+  const upd=()=>{m.querySelector('#mConsL').style.display=m.querySelector('#mCons').style.display=t==='kine'?'':'none'};upd();
+  m.querySelectorAll('#mType button').forEach(b=>b.onclick=()=>{t=b.dataset.v;m.querySelectorAll('#mType button').forEach(x=>x.classList.toggle('on',x===b));upd()});
+  m.querySelectorAll('#mPain button').forEach(b=>b.onclick=()=>{pain=+b.dataset.v;m.querySelectorAll('#mPain button').forEach(x=>x.classList.toggle('on',x===b))});
+  m.onclick=e=>{if(e.target===m)m.remove()};m.querySelector('#mCancel').onclick=()=>m.remove();
+  const del=m.querySelector('#mDel');if(del)del.onclick=()=>{const h=S.get('hist',[]);const e=h.find(x=>x.id===editId);e.supprime=true;e.maj=new Date().toISOString();S.set('hist',h);m.remove();render();sync()};
+  m.querySelector('#mSave').onclick=()=>{
+    const j=m.querySelector('#mDate').value||today();const dur=parseFloat(m.querySelector('#mDur').value.replace(',','.'))||0;
+    const rec={id:ex?ex.id:uid(),date:new Date(j+'T'+(ex?ex.date.slice(11,19):'12:00:00')).toISOString(),jour:j,prog:t,programme:MTYPES[t],manuel:true,duree_s:Math.round(dur*60),douleur:pain,
+      contenu:m.querySelector('#mCont').value.trim()||undefined,consignes:t==='kine'?(m.querySelector('#mCons').value.trim()||undefined):undefined,note:m.querySelector('#mNote').value.trim()||undefined,exercices:[],supprime:false};
+    const h=S.get('hist',[]);const e=h.find(x=>x.id===rec.id);e?Object.assign(e,rec):h.push(rec);S.set('hist',h);m.remove();toast('Séance enregistrée');render();sync();
+  };
+}
 function settings(){
   app.innerHTML=`<h1>Réglages</h1><p class="sub">Synchronisation avec ton dépôt GitHub privé.</p>
   <div class="card"><h3>Token GitHub</h3>
@@ -383,7 +471,7 @@ function settings(){
   <div style="height:10px"></div><input type="password" id="tk" placeholder="github_pat_…" value="${tok()?'••••••••':''}">
   <div class="chips" style="margin-top:10px"><button id="tkSave" class="on">Enregistrer</button><button id="syncNow">Synchroniser maintenant</button>${tok()?'<button id="tkDel">Supprimer le token</button>':''}</div>
   ${syncLine()}</div>
-  <div class="card"><h3>Données</h3><p style="font-size:13px;color:var(--muted);line-height:1.5">${S.get('hist',[]).length} séances, ${S.get('suivi',[]).length} jours de suivi et ${S.get('poids',[]).filter(x=>!x.supprime).length} pesées enregistrés. Fichier : <b>${GH.repo}/${GH.file}</b>.</p></div>`;
+  <div class="card"><h3>Données</h3><p style="font-size:13px;color:var(--muted);line-height:1.5">${S.get('hist',[]).length} séances, ${S.get('suivi',[]).length} jours de suivi et ${S.get('poids',[]).filter(x=>!x.supprime).length} pesées, ${S.get('cuisses',[]).filter(x=>!x.supprime).length} mesures de cuisses et ${S.get('tests',[]).filter(x=>!x.supprime).length} tests enregistrés. Fichier : <b>${GH.repo}/${GH.file}</b>.</p></div>`;
   app.querySelector('#tkSave').onclick=()=>{const v=app.querySelector('#tk').value.trim();if(v&&!v.startsWith('•')){S.set('ghToken',v);sync(true)}};
   app.querySelector('#syncNow').onclick=()=>sync(true);
   const del=app.querySelector('#tkDel');if(del)del.onclick=()=>{S.set('ghToken','');settings()};
@@ -416,10 +504,14 @@ function lib(){
   app.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{libF=b.dataset.f;lib()});
 }
 function hist(){
-  const h=S.get('hist',[]).slice().reverse();
-  app.innerHTML=`<h1>Historique</h1>${syncLine()}<div style="height:16px"></div>
-  ${h.length?h.map(x=>`<details class="hist"><summary><div class="hrow"><div><b>${x.programme||x.prog}</b> · Phase ${x.phase}${x.interrompue?' · <span style="color:var(--knee)">interrompue</span>':''}<small>${new Date(x.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</small></div><div style="text-align:right">${Math.round((x.duree_s||0)/60)} min<small>${x.douleur!=null?'douleur '+x.douleur+'/10':''}</small></div></div></summary>
-  <div class="hdet">${(x.exercices||[]).map(e=>`${e.series_faites>=e.series_prevues?'✓':e.series_faites?'◐':'✕'} ${e.nom} — ${e.series_faites}/${e.series_prevues}${e.douleur?' · <span style="color:var(--knee)">douloureux</span>':''}`).join('<br>')}${x.note?`<br><i>« ${x.note} »</i>`:''}</div></details>`).join(''):'<div class="empty">Pas encore de séance. Lance-toi !</div>'}`;
+  const h=S.get('hist',[]).filter(x=>!x.supprime).sort((a,b)=>b.date.localeCompare(a.date));
+  app.innerHTML=`<h1>Historique</h1>${syncLine()}
+  <div class="chips" style="margin:16px 0"><button id="addKine" class="on">+ Séance kiné</button><button id="addOther">+ Autre activité</button></div>
+  ${h.length?h.map(x=>`<details class="hist"><summary><div class="hrow"><div><b>${x.manuel&&x.prog==='kine'?'⚕ ':''}${x.programme||x.prog}</b>${x.manuel?'':` · Phase ${x.phase}`}${x.interrompue?' · <span style="color:var(--knee)">interrompue</span>':''}<small>${new Date(x.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</small></div><div style="text-align:right">${Math.round((x.duree_s||0)/60)} min<small>${x.douleur!=null?'douleur '+x.douleur+'/10':''}</small></div></div></summary>
+  <div class="hdet">${(x.exercices||[]).map(e=>`${e.series_faites>=e.series_prevues?'✓':e.series_faites?'◐':'✕'} ${e.nom} — ${e.series_faites}/${e.series_prevues}${e.douleur?' · <span style="color:var(--knee)">douloureux</span>':''}`).join('<br>')}${x.contenu?`<b>Fait :</b> ${x.contenu}`:''}${x.consignes?`<br><b>Consignes :</b> ${x.consignes}`:''}${x.note?`<br><i>« ${x.note} »</i>`:''}${x.manuel?`<br><button data-edit="${x.id}" style="color:var(--gold);text-decoration:underline;font-size:13px;margin-top:6px">Modifier</button>`:''}</div></details>`).join(''):'<div class="empty">Pas encore de séance. Lance-toi !</div>'}`;
+  app.querySelector('#addKine').onclick=()=>manualForm('kine');
+  app.querySelector('#addOther').onclick=()=>manualForm('marche');
+  app.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>manualForm(null,b.dataset.edit));
 }
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
 
