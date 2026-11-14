@@ -746,7 +746,7 @@ function beep(f=880,d=.15){try{if(!ac)return;const o=ac.createOscillator(),g=ac.
 async function start(k){
   try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
   try{wl=await navigator.wakeLock?.request('screen')}catch(e){}
-  curProg=k;steps=buildSteps(k);idx=0;track={};painEx={};rate={};startT=Date.now();P.classList.add('show');load();
+  curProg=k;steps=buildSteps(k);idx=0;track={};painEx={};rate={};startT=Date.now();liveDone=null;P.classList.add('show');load();
 }
 function isTimed(st){return st.kind==='rest'||st.e.t==='time'}
 function load(){
@@ -754,11 +754,33 @@ function load(){
   total=remain=isTimed(st)?st.v*(st.kind==='work'&&st.side?2:1):0;
   running=isTimed(st)&&st.kind==='rest';
   if(st.kind==='work'&&isTimed(st))running=false;
-  draw();loop();
+  endAt=running?(arguments[0]||Date.now())+remain*1000:null;
+  if(arguments[0])return;
+  save();draw();loop();
+}
+/* --- séance en cours : sauvegarde et reprise --- */
+let endAt=null,liveDone=null;
+function save(){S.set('live',{prog:curProg,lvl:level,idx,track,painEx,rate,startT,running,endAt,remain,total,done:liveDone,steps:steps.map(x=>Object.assign({},x,{e:undefined}))})}
+function catchUp(){ // rattrape le temps écoulé hors de l'appli
+  let n=0;
+  while(running&&endAt&&Date.now()>=endAt&&n<200){n++;const t=endAt;const st=steps[idx];if(st.kind==='work')track[idx]=1;
+    if(idx>=steps.length-1){remain=0;running=false;endAt=null;liveDone={partial:false};break}
+    idx++;load(t)}
+  if(running&&endAt)remain=Math.max(0,(endAt-Date.now())/1000);
+}
+function resume(){
+  const L=S.get('live',null);if(!L||!L.steps||!PROGS[L.prog]||Date.now()-L.startT>12*3600e3){S.set('live',null);return false}
+  curProg=L.prog;steps=L.steps.map(x=>x.kind==='work'?Object.assign({},x,{e:EX[x.id]}):x);if(steps.some(x=>x.kind==='work'&&!x.e)){S.set('live',null);return false}
+  idx=L.idx;track=L.track||{};painEx=L.painEx||{};rate=L.rate||{};startT=L.startT;running=L.running;endAt=L.endAt;remain=L.remain;total=L.total;liveDone=L.done;
+  P.classList.add('show');
+  if(liveDone){finish(liveDone.partial);return true}
+  catchUp();save();
+  if(liveDone){finish(false);return true}
+  draw();loop();return true;
 }
 function loop(){clearInterval(tick);last=Date.now();tick=setInterval(()=>{
-  const now=Date.now(),dt=(now-last)/1000;last=now;if(!running||!total)return;
-  const before=Math.ceil(remain);remain=Math.max(0,remain-dt);const after=Math.ceil(remain);
+  if(!running||!total||!endAt)return;
+  const before=Math.ceil(remain);remain=Math.max(0,(endAt-Date.now())/1000);const after=Math.ceil(remain);
   const st=steps[idx];
   if(st.side&&st.kind==='work'&&before>total/2&&after<=total/2&&after>0){beep(660,.3)}
   if(after!==before&&after<=3&&after>0)beep(660);
@@ -793,9 +815,9 @@ function draw(){
   P.querySelector('#prev').onclick=()=>{if(idx>0){idx--;load()}};
   P.querySelector('#skip')&&(P.querySelector('#skip').onclick=next);
   P.querySelector('#ok')&&(P.querySelector('#ok').onclick=()=>{beep(990);markDone();next()});
-  P.querySelector('#tog')&&(P.querySelector('#tog').onclick=()=>{running=!running;P.querySelector('#tog').textContent=running?'Pause':'Reprendre'});
+  P.querySelector('#tog')&&(P.querySelector('#tog').onclick=()=>{if(running){remain=Math.max(0,(endAt-Date.now())/1000);running=false;endAt=null}else{running=true;endAt=Date.now()+remain*1000}P.querySelector('#tog').textContent=running?'Pause':'Reprendre';save()});
   bindRate(P);
-  const hu=P.querySelector('#hurt');if(hu)hu.onclick=()=>{painEx[st.bi]=!painEx[st.bi];hu.style.background=painEx[st.bi]?'var(--knee)':'';hu.style.color=painEx[st.bi]?'#fff':'';toast(painEx[st.bi]?'Douleur notée sur cet exercice':'Douleur retirée')};
+  const hu=P.querySelector('#hurt');if(hu)hu.onclick=()=>{painEx[st.bi]=!painEx[st.bi];save();hu.style.background=painEx[st.bi]?'var(--knee)':'';hu.style.color=painEx[st.bi]?'#fff':'';toast(painEx[st.bi]?'Douleur notée sur cet exercice':'Douleur retirée')};
   updRing();
 }
 const R=100,CIRC=2*Math.PI*R;
@@ -809,11 +831,11 @@ function updRing(){
   else if(st.kind==='work'&&total>=120)ts.textContent='minutes';
 }
 function rateBox(bi,name){return `<div class="rateq">Comment était <b>${name}</b> ?<div class="chips" style="justify-content:center">${[['facile','Facile'],['correct','Correct'],['dur','Dur']].map(([v,l])=>`<button data-rate="${bi}:${v}" class="${rate[bi]===v?'on':''}">${l}</button>`).join('')}</div></div>`}
-function bindRate(root){root.querySelectorAll('[data-rate]').forEach(b=>b.onclick=()=>{const [bi,v]=b.dataset.rate.split(':');rate[bi]=v;root.querySelectorAll(`[data-rate^="${bi}:"]`).forEach(x=>x.classList.toggle('on',x===b))})}
-function markDone(){const st=steps[idx];if(st&&st.kind==='work')track[idx]=1}
+function bindRate(root){root.querySelectorAll('[data-rate]').forEach(b=>b.onclick=()=>{const [bi,v]=b.dataset.rate.split(':');rate[bi]=v;save();root.querySelectorAll(`[data-rate^="${bi}:"]`).forEach(x=>x.classList.toggle('on',x===b))})}
+function markDone(){const st=steps[idx];if(st&&st.kind==='work')track[idx]=1;save()}
 function next(){if(idx<steps.length-1){idx++;load()}else finish()}
 function finish(partial){
-  clearInterval(tick);running=false;const dur=Math.round((Date.now()-startT)/1000);let pain=null;
+  clearInterval(tick);running=false;endAt=null;liveDone={partial:!!partial};save();const dur=Math.round((Date.now()-startT)/1000);let pain=null;
   P.innerHTML=`<div class="ptop"><span></span></div><div class="pmain done"><div class="phase">${partial?'Séance interrompue':'Terminé'}</div><h2>${partial?'Pas grave !':'Bravo !'}</h2><p class="sub">${PROGS[curProg].n} · ${Math.round(dur/60)} min</p>
   ${(()=>{const lw=[...steps].reverse().find(x=>x.kind==='work');return lw&&!rate[lw.bi]?rateBox(lw.bi,lw.e.n):''})()}
   <p style="margin-top:24px;font-weight:600">Douleur ressentie pendant la séance ?</p>
@@ -829,11 +851,17 @@ function finish(partial){
     const h=S.get('hist',[]);h.push(rec);S.set('hist',h);stop();tab='home';render();sync();
   };
 }
-function stop(){clearInterval(tick);running=false;P.classList.remove('show');try{wl?.release()}catch(e){}}
+function stop(){clearInterval(tick);running=false;endAt=null;S.set('live',null);P.classList.remove('show');try{wl?.release()}catch(e){}}
 applyOverride(S.get('progOverride',null));
 render();
+resume();
 sync();
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(P.classList.contains('show'))save();return}
+  sync();
+  if(P.classList.contains('show')&&!liveDone&&steps.length){const i0=idx;catchUp();save();if(liveDone){finish(false)}else if(idx!==i0){draw();loop()}else updRing();
+    try{navigator.wakeLock?.request('screen').then(w=>wl=w).catch(()=>{})}catch(e){}}
+});
+window.addEventListener('pagehide',()=>{if(P.classList.contains('show'))save()});
 window.addEventListener('online',()=>sync());
 setInterval(()=>{if(tok()&&pending()&&navigator.onLine&&!document.hidden)sync()},60000);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
