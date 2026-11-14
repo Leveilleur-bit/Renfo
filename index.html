@@ -154,9 +154,17 @@ textarea{min-height:70px;resize:vertical}
 @media print{body.printing .wrap,body.printing .tabs,body.printing #player,body.printing .noprint{display:none!important}
 body.printing{background:#fff!important;color:#000}body.printing .modal{position:static;background:none}body.printing .sheet{max-height:none;box-shadow:none;background:#fff;color:#000}
 body.printing .sheet *{color:#000!important;background:none!important;border-color:#999!important}}
+.bgimg{position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(16,13,11,.55) 0%,rgba(16,13,11,.78) 35%,rgba(16,13,11,.9) 100%),url(bg.jpg) center top/cover no-repeat}
+body{background:#100d0b!important}
+.card,.prog,.stat,.ex,.hist{background:rgba(27,22,19,.82)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.note{background:rgba(40,32,26,.85)}
+.pill-row{background:rgba(40,32,26,.85)}
+#player{background:linear-gradient(180deg,rgba(12,10,8,.86),rgba(12,10,8,.94)),url(bg.jpg) center/cover no-repeat!important}
+.hero h1{text-shadow:0 0 18px rgba(232,200,116,.35),0 2px 8px #000}
 </style>
 </head>
 <body>
+<div class="bgimg"></div>
 <div class="wrap" id="app"></div>
 <nav class="tabs">
   <button data-tab="home" class="on"><i>◉</i>Séances</button>
