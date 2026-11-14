@@ -192,11 +192,11 @@ const EX={
   mollet:{n:"Montées sur pointes",z:'knee',eq:"Aucun",t:'reps',d:"Debout, monte sur la pointe des pieds puis redescends lentement.",c:["Appuie-toi légèrement à un mur","Monte haut, descends en 3 s","Phase 2 : sur une jambe"],m:"Sans danger pour le genou."},
   mur:{n:"Chaise contre le mur (haute)",z:'knee',eq:"Mur",t:'time',d:"Dos au mur, descends un peu comme pour t'asseoir et tiens la position.",c:["Flexion de 30–45° maximum","Genoux au-dessus des chevilles","Respire normalement"],m:"Garde cette position haute. Ne descends pas à 90°.",w:"Remonte si le genou tire à l'intérieur."},
   equilibre:{n:"Équilibre sur une jambe",z:'knee',eq:"Aucun",t:'time',d:"Tiens-toi sur une jambe, genou légèrement déverrouillé.",c:["Regard fixe devant toi","Phase 2 : yeux fermés","Près d'un mur pour la sécurité"],m:"Ne tourne pas le buste en appui sur la jambe droite. Le ménisque abîmé dégrade l'équilibre, d'où l'intérêt de cet exercice.",side:true},
-  chat:{n:"Chat-vache",z:'back',eq:"Tapis de sol",t:'reps',d:"À quatre pattes, alterne dos rond et dos creux, doucement.",c:["Coussin sous les genoux","Synchronise avec la respiration","Amplitude sans douleur"],m:"Coussin ou tapis plié sous les genoux. Ne t'assieds pas sur les talons."},
-  birddog:{n:"Bird dog",z:'back',eq:"Tapis de sol",t:'reps',d:"À quatre pattes, tends bras et jambe opposés, tiens 3 s, reviens.",c:["Coussin sous les genoux","Bassin immobile, pas de rotation","Dos plat comme une table"],m:"Si l'appui à genoux gêne le genou droit : fais-le debout, mains sur une table.",side:true},
+  chat:{n:"Chat-vache debout",z:'back',eq:"Aucun",t:'reps',d:"Debout, genoux légèrement fléchis, buste penché en avant, mains posées sur les cuisses. Alterne doucement dos rond et dos creux.",c:["Mains sur les cuisses","Synchronise avec la respiration","Amplitude sans douleur"],m:"Version debout : pas d'appui sur les genoux, comme le demande ton chirurgien."},
+  birddog:{n:"Bird dog debout (mains sur table)",z:'back',eq:"Table",t:'reps',d:"Mains posées sur une table ou un plan de travail, buste incliné et dos plat. Tends un bras devant et la jambe opposée derrière, tiens 3 s, reviens.",c:["Dos plat comme une table","Bassin immobile, sans rotation","Genou d'appui légèrement fléchi"],m:"Version debout pour éviter l'appui à genoux. Le pied d'appui reste fixe : pas de rotation du genou.",side:true},
   deadbug:{n:"Dead bug",z:'back',eq:"Tapis de sol",t:'reps',d:"Sur le dos, bras au plafond, genoux à 90°. Descends bras et jambe opposés sans décoller le bas du dos.",c:["Bas du dos plaqué au sol","Expire en descendant","Lent et contrôlé"],side:true},
-  planche:{n:"Planche",z:'back',eq:"Tapis de sol",t:'time',d:"Sur les avant-bras, corps aligné. Phase 1 : sur les genoux, coussin dessous.",c:["Rentre le nombril","Serre les fessiers","Ne laisse pas le bassin tomber"]},
-  lat:{n:"Gainage latéral",z:'back',eq:"Tapis de sol",t:'time',d:"Sur le côté, appui avant-bras et pieds (ou genoux), bassin levé.",c:["Corps en ligne droite","Épaule au-dessus du coude","Hanche haute"],m:"Version sur les genoux : coussin dessous. Si ça appuie sur l'intérieur du genou droit, passe à la version sur les pieds ou réduis le temps.",side:true},
+  planche:{n:"Planche inclinée",z:'back',eq:"Table",t:'time',d:"Avant-bras posés sur une table ou un plan de travail, pieds en arrière, corps bien droit des talons à la tête. Phase 2 : appui plus bas (chaise solide, canapé).",c:["Rentre le nombril","Serre les fessiers","Ne laisse pas le bassin tomber"],m:"Remplace la planche sur les genoux : aucun appui sur les genoux."},
+  lat:{n:"Gainage latéral au mur",z:'back',eq:"Mur",t:'time',d:"Debout de profil, avant-bras contre le mur à hauteur d'épaule, pieds éloignés du mur et serrés. Garde le corps bien aligné, sans laisser la hanche tomber vers le mur.",c:["Corps en ligne droite","Épaule au-dessus du coude","Hanche poussée vers l'extérieur"],m:"Version debout : le gainage latéral au sol se fait en appui sur le genou ou sur le côté du genou, à éviter.",side:true},
   rowing:{n:"Tirage à l'élastique",z:'back',eq:"Élastique",t:'reps',d:"Élastique fixé devant toi à hauteur de poitrine. Tire les coudes vers l'arrière.",c:["Serre les omoplates","Épaules basses","Assis sur une chaise si tu préfères"]},
   pullapart:{n:"Écarté à l'élastique",z:'back',eq:"Élastique",t:'reps',d:"Bras tendus devant, élastique entre les mains. Écarte jusqu'à toucher la poitrine.",c:["Bras presque tendus","Serre le haut du dos","Ne cambre pas"]},
   pallof:{n:"Pallof press",z:'back',eq:"Élastique",t:'reps',d:"Élastique fixé sur le côté à hauteur de poitrine. Mains au sternum, pousse devant toi sans laisser le buste tourner.",c:["Résiste à la rotation","Tiens 2 s bras tendus","Genoux souples, pas verrouillés"],m:"Les pieds ne bougent pas : aucune torsion du genou.",side:true},
@@ -212,6 +212,7 @@ const EX={
   pectoraux:{n:"Pectoraux à l'encadrement de porte",z:'stretch',eq:"Porte",t:'time',side:true,d:"Avant-bras contre le montant d'une porte, coude à hauteur d'épaule. Avance d'un petit pas jusqu'à sentir l'avant de l'épaule.",c:["Épaule basse","Buste droit, sans cambrer","Petit pas, pas de torsion du genou"],m:"Ouvre la poitrine : utile pour la posture et le haut du dos."},
   hautDos:{n:"Étirement du haut du dos",z:'stretch',eq:"Aucun",t:'time',d:"Debout, mains jointes devant toi, bras tendus. Arrondis le haut du dos comme pour enlacer un gros ballon.",c:["Écarte les omoplates","Menton légèrement rentré","Genoux souples"]},
   lateralDos:{n:"Étirement latéral debout",z:'stretch',eq:"Aucun",t:'time',side:true,d:"Debout, pieds largeur de hanches. Monte un bras au-dessus de la tête et penche-toi doucement du côté opposé.",c:["Ne te penche pas en avant","Bassin fixe","Respire dans le flanc étiré"],m:"Pieds fixes, sans pivoter sur la jambe droite."},
+  etAdduct:{n:"Adducteurs assis, jambes écartées",z:'stretch',eq:"Tapis de sol",t:'time',d:"Assis au sol, jambes tendues et écartées sans forcer. Penche doucement le buste en avant, dos droit, mains au sol devant toi.",c:["Genoux tendus, rotules vers le plafond","Dos droit, bascule depuis les hanches","Écart modéré, sans douleur au genou"],m:"Genoux tendus : étire l'intérieur de la cuisse, où s'insère la patte d'oie, sans contrainte pour le ménisque."},
   bascule:{n:"Bascule du bassin (allongé)",z:'stretch',eq:"Tapis de sol",t:'reps',d:"Allongé, genoux pliés. Alterne doucement : plaquer le bas du dos au sol, puis le creuser légèrement.",c:["Mouvement lent et petit","Synchronise avec la respiration","Fessiers relâchés"],m:"Mobilise le bas du dos sans aucune charge."},
 
 };
@@ -241,7 +242,7 @@ const PROGS={
     ['tapis',[1,1],[300,300],0],['tapisInc',[1,1],[600,900],0],['rameurInt',[0,4],[60,60],60],['tapis',[1,1],[180,180],0],
     ['etMollet',[1,1],[30,30],0],['etIschio',[1,1],[30,30],0]]},
   etirJambes:{n:"Étirements jambes",z:'stretch',l:"❦",etir:true,d:"Mollets, ischios, avant de hanche et mobilité du genou, en douceur",items:[
-    ['heelslide',[1,1],[10,10],15],['etMollet',[2,2],[30,30],10],['etIschio',[2,2],[30,40],10],['etPsoas',[2,2],[30,40],10],['genouPoitrine',[1,1],[30,30],0]]},
+    ['heelslide',[1,1],[10,10],15],['etMollet',[2,2],[30,30],10],['etIschio',[2,2],[30,40],10],['etPsoas',[2,2],[30,40],10],['etAdduct',[2,2],[30,40],10],['genouPoitrine',[1,1],[30,30],0]]},
   etirDos:{n:"Étirements dos",z:'stretch',l:"❧",etir:true,d:"Mobilité et relâchement du bas et du haut du dos",items:[
     ['bascule',[1,1],[10,12],0],['chat',[1,1],[10,10],0],['genouPoitrine',[2,2],[30,30],10],['rotation',[2,2],[30,30],10],
     ['lateralDos',[1,1],[30,30],0],['pectoraux',[2,2],[30,30],10],['hautDos',[2,2],[30,30],10],['decharge',[1,1],[90,120],0]]},
@@ -276,7 +277,7 @@ async function sync(manual){
     const r=await fetch(url(GH.file)+'?ref='+GH.branch+'&t='+Date.now(),{headers:hdr(),cache:'no-store'});
     if(r.ok){const j=await r.json();sha=j.sha;try{remote=JSON.parse(b64d(j.content))}catch(e){}}
     else if(r.status!==404)throw new Error(ghErr(r.status));
-    const merged={app:'Renfo genou & dos',profil:'Fissure complexe ménisque interne droit, non opéré, suivi kiné (vendredi)',maj:new Date().toISOString()};
+    const merged={app:'Renfo genou & dos',profil:'Lésion fissuraire étendue ménisque médial droit (corne postérieure → segment moyen) + périméniscite ; antécédent lésion méniscale médiale gauche ; non opéré ; kiné le vendredi',maj:new Date().toISOString()};
     KEYS.forEach(([r,l])=>merged[r]=mergeById(remote[r]||[],S.get(l,[])));
     SC.forEach(([r,l])=>{const lm=S.get('maj_'+l,0),rm=remote[r+'_maj']||0;merged[r]=rm>lm?remote[r]:(S.get(l,null)??remote[r]??null);merged[r+'_maj']=Math.max(lm,rm)});
     const pick=o=>JSON.stringify([...KEYS.map(([r])=>o[r]||[]),...SC.map(([r])=>o[r]??null)]);const changed=pick(remote)!==pick(merged);
@@ -349,7 +350,7 @@ function render(){
 function home(){
   const h=S.get('hist',[]).filter(x=>!x.supprime);const wk=Date.now()-7*864e5;
   const rec=h.filter(x=>new Date(x.date).getTime()>wk);const thisWeek=rec.length;const mins=Math.round(rec.reduce((a,x)=>a+(x.duree_s||0),0)/60);
-  app.innerHTML=`<div class="hero">${CASTLE}<h1>Renfo</h1><div class="motto">Genou · Dos · Mesures</div><p class="sub">Adapté à ta fissure du ménisque interne droit.</p>${syncLine()}<button id="alertBtn" class="alert">⚠ Signaux d'alerte : quand arrêter</button></div>
+  app.innerHTML=`<div class="hero">${CASTLE}<h1>Renfo</h1><div class="motto">Genou · Dos · Mesures</div><p class="sub">Adapté à tes ménisques internes, surtout le droit.</p>${syncLine()}<button id="alertBtn" class="alert">⚠ Signaux d'alerte : quand arrêter</button></div>
   <div class="pill-row"><button data-l="0" class="${level==0?'on':''}">Phase 1 · Protection</button><button data-l="1" class="${level==1?'on':''}">Phase 2 · Renfo</button></div>
   <div class="stats"><div class="stat"><b>${thisWeek}</b><span>séances / 7 j</span></div><div class="stat"><b>${mins}</b><span>minutes / 7 j</span></div><div class="stat"><b>${h.length}</b><span>au total</span></div></div>
   ${overrideNote?`<div class="men" style="margin-top:16px"><b>Ajustement du programme :</b> ${overrideNote}</div>`:''}
@@ -363,7 +364,7 @@ function home(){
   <p style="font-size:13px;color:var(--muted);text-align:center;margin:-2px 0 8px">Les séances Genou, Dos, Complète et Cardio finissent déjà par un retour au calme.</p>
   <h2>Jour difficile</h2>
   ${Object.entries(PROGS).filter(([,p])=>p.douce).map(([k,p])=>`<button class="prog" data-p="${k}"><div class="dot" style="background:${C[p.z]}">${p.l}</div><div><h3>${p.n}</h3><p>${p.d}<br>≈ ${estMin(p)} min</p></div><span class="go">›</span></button>`).join('')}
-  <div class="note"><b>Règles pour ton ménisque</b><br>• Genou chargé : jamais au-delà de 60–70° de flexion (pas de squat profond, pas de fente, ne pas s'accroupir).<br>• Pas de rotation du genou quand le pied est au sol.<br>• Pas d'impact : ni course ni sauts pour l'instant.<br>• Une gêne ≤ 3/10 qui disparaît en 24 h, c'est acceptable.<br><br><b>Rythme :</b> 3 séances par semaine, en alternant Genou, Dos et Complète, plus de la marche quand tu veux.<br><b>Phase 2</b> seulement quand, depuis 2 semaines : pas de gonflement après les séances, genou qui se tend complètement, marche normale et douleur ≤ 2/10.<br><br>Cette appli ne remplace pas un kiné. Pour une fissure complexe, fais valider le programme par lui ou par ton chirurgien. Si tu es opéré, suis le protocole post-opératoire qu'on te donne.</div>`;
+  <div class="note"><b>Règles pour tes ménisques</b> (droit, et gauche en antécédent)<br>• Pas de position à genoux ni accroupie : consigne de ton chirurgien.<br>• Genou chargé : jamais au-delà de 60–70° de flexion (pas de squat profond, pas de fente).<br>• Pas de rotation du genou quand le pied est au sol.<br>• Pas d'impact : ni course ni sauts pour l'instant. Le vélo et les activités aquatiques sont conseillés par ton chirurgien : note-les dans Historique.<br>• Une gêne ≤ 3/10 qui disparaît en 24 h, c'est acceptable.<br><br><b>Rythme :</b> 3 séances par semaine, en alternant Genou, Dos et Complète, plus de la marche quand tu veux.<br><b>Phase 2</b> seulement quand, depuis 2 semaines : pas de gonflement après les séances, genou qui se tend complètement, marche normale et douleur ≤ 2/10.<br><br>Cette appli ne remplace pas un kiné. Pour une fissure complexe, fais valider le programme par lui ou par ton chirurgien. Si tu es opéré, suis le protocole post-opératoire qu'on te donne.</div>`;
   app.querySelector('#alertBtn').onclick=alertSheet;
   bindDaily();
   bindProg();
@@ -568,7 +569,7 @@ function remindCards(){
   const lq=lastQuot();if(!lq||(Date.now()-new Date(lq.jour+'T12:00'))/864e5>=28)out+=`<button id="rQuot" class="card" style="width:100%;text-align:left;display:block"><h3>☙ Questionnaire du mois</h3><span style="color:var(--muted);font-size:14px">8 questions sur ta gêne au quotidien (2 min).</span></button>`;
   return out;
 }
-const MTYPES={kine:'Kiné',libre:'Séance libre',marche:'Marche',rameur:'Rameur',autre:'Autre'};
+const MTYPES={kine:'Kiné',velo:'Vélo',aqua:'Natation / aquatique',marche:'Marche',rameur:'Rameur',libre:'Séance libre',autre:'Autre'};
 function bilanData(){
   const now=Date.now(),D=864e5,from=now-28*D,mid=now-14*D;const iso=t=>new Date(t).toISOString();
   const H=S.get('hist',[]).filter(x=>!x.supprime&&new Date(x.date).getTime()>=from);
@@ -598,7 +599,7 @@ function bilanData(){
 function bilanText(b){
   const L=[];const a=age();
   L.push(`BILAN RENFO — 4 dernières semaines (depuis le ${dl(new Date(b.from).toISOString().slice(0,10))})`);
-  L.push(`Fissure complexe ménisque interne droit, non opérée${a?` · ${a} ans`:''} · phase ${level+1}`);
+  L.push(`Lésion fissuraire étendue du ménisque médial droit (corne post. → segment moyen), périméniscite · antécédent ménisque médial gauche · non opéré${a?` · ${a} ans`:''} · phase ${level+1}`);
   L.push('',`Séances : ${b.nApp} à domicile (${b.f1(b.perW)}/sem), ${b.nKine} kiné, ${b.min} min au total`);
   L.push(`Douleur genou en séance : ${b.f1(b.dS1)} → ${b.f1(b.dS2)} /10 (sem. 1-2 → 3-4)`);
   L.push(`Douleur genou au quotidien : ${b.f1(b.dJ1)} → ${b.f1(b.dJ2)} /10`);
