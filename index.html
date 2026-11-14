@@ -233,14 +233,15 @@ async function sync(manual){
     const local={seances:S.get('hist',[]),suivi:S.get('suivi',[]),poids:S.get('poids',[])};
     const merged={app:'Renfo genou & dos',profil:'Fissure complexe ménisque interne droit, non opéré, suivi kiné',maj:new Date().toISOString(),
       seances:mergeById(remote.seances||[],local.seances),suivi:mergeById(remote.suivi||[],local.suivi),poids:mergeById(remote.poids||[],local.poids)};
-    const changed=JSON.stringify({a:remote.seances,b:remote.suivi,c:remote.poids||[]})!==JSON.stringify({a:merged.seances,b:merged.suivi,c:merged.poids});
+    merged.taille_cm=S.get('taille',null)||remote.taille_cm||null;
+    const changed=JSON.stringify({a:remote.seances,b:remote.suivi,c:remote.poids||[],d:remote.taille_cm||null})!==JSON.stringify({a:merged.seances,b:merged.suivi,c:merged.poids,d:merged.taille_cm});
     if(changed||!sha){
       const body={message:'séances '+new Date().toISOString().slice(0,16),content:b64e(JSON.stringify(merged,null,1)),branch:GH.branch};if(sha)body.sha=sha;
       const p=await fetch(url(GH.file),{method:'PUT',headers:hdr(),body:JSON.stringify(body)});
       if(p.status===409){syncing=false;return sync(manual)}
       if(!p.ok)throw new Error('GitHub '+p.status);
     }
-    S.set('hist',merged.seances);S.set('suivi',merged.suivi);S.set('poids',merged.poids);
+    S.set('hist',merged.seances);S.set('suivi',merged.suivi);S.set('poids',merged.poids);if(merged.taille_cm)S.set('taille',merged.taille_cm);
     syncState={ok:Date.now()};S.set('syncState',syncState);
     await loadProgramme();
     if(manual)toast('Synchronisé ✓');
@@ -281,7 +282,7 @@ function render(){
 function home(){
   const h=S.get('hist',[]);const wk=Date.now()-7*864e5;
   const rec=h.filter(x=>new Date(x.date).getTime()>wk);const thisWeek=rec.length;const mins=Math.round(rec.reduce((a,x)=>a+(x.duree_s||0),0)/60);
-  app.innerHTML=`<div class="hero">${CASTLE}<h1>Renfo</h1><div class="motto">Genou · Dos · Poids</div><p class="sub">Adapté à ta fissure du ménisque interne droit.</p>${syncLine()}<button id="alertBtn" class="alert">⚠ Signaux d'alerte : quand arrêter</button></div>
+  app.innerHTML=`<div class="hero">${CASTLE}<h1>Renfo</h1><div class="motto">Genou · Dos · Poids · IMC</div><p class="sub">Adapté à ta fissure du ménisque interne droit.</p>${syncLine()}<button id="alertBtn" class="alert">⚠ Signaux d'alerte : quand arrêter</button></div>
   <div class="pill-row"><button data-l="0" class="${level==0?'on':''}">Phase 1 · Protection</button><button data-l="1" class="${level==1?'on':''}">Phase 2 · Renfo</button></div>
   <div class="stats"><div class="stat"><b>${thisWeek}</b><span>séances / 7 j</span></div><div class="stat"><b>${mins}</b><span>minutes / 7 j</span></div><div class="stat"><b>${h.length}</b><span>au total</span></div></div>
   ${overrideNote?`<div class="men" style="margin-top:16px"><b>Ajustement du programme :</b> ${overrideNote}</div>`:''}
@@ -316,6 +317,15 @@ function bindDaily(){
   app.querySelectorAll('#dSw button').forEach(b=>b.onclick=()=>setDaily({gonflement:b.dataset.v}));
   app.querySelectorAll('#dSy button').forEach(b=>b.onclick=()=>{const d=S.get('suivi',[]).find(x=>x.jour===today())||{};let s=d.symptomes||[];s=s.includes(b.dataset.v)?s.filter(x=>x!==b.dataset.v):[...s,b.dataset.v];setDaily({symptomes:s})});
 }
+function imc(kg){const t=S.get('taille',null);return t&&kg?kg/Math.pow(t/100,2):null}
+function imcCat(v){return v<18.5?['Insuffisance pondérale','#7b9bd0']:v<25?['Corpulence normale','#7fa35a']:v<30?['Surpoids','#c9a24a']:v<35?['Obésité modérée','#c8692e']:v<40?['Obésité sévère','#b8442f']:['Obésité morbide','#8f2a2a']}
+function imcGauge(v){
+  const lo=15,hi=40,X=x=>Math.max(0,Math.min(100,(x-lo)/(hi-lo)*100));
+  const segs=[[15,18.5,'#7b9bd0'],[18.5,25,'#7fa35a'],[25,30,'#c9a24a'],[30,35,'#c8692e'],[35,40,'#b8442f']];
+  return `<div style="position:relative;height:10px;border-radius:5px;overflow:hidden;display:flex;margin:12px 0 4px">${segs.map(([a,b,c])=>`<div style="width:${X(b)-X(a)}%;background:${c};opacity:.8"></div>`).join('')}</div>
+  <div style="position:relative;height:14px"><div style="position:absolute;left:calc(${X(v)}% - 6px);top:-4px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:8px solid var(--gold2)"></div></div>
+  <div style="position:relative;height:14px;font-size:11px;color:var(--muted)">${[15,18.5,25,30,35,40].map(x=>`<span style="position:absolute;left:${X(x)}%;transform:translateX(${x==15?0:x==40?-100:-50}%)">${String(x).replace('.',',')}</span>`).join('')}</div>`;
+}
 function poids(){
   const all=S.get('poids',[]).filter(x=>!x.supprime).sort((a,b)=>a.jour.localeCompare(b.jour));
   const last=all[all.length-1];
@@ -328,8 +338,16 @@ function poids(){
   <div class="wrow"><input type="text" inputmode="decimal" id="kg" placeholder="kg" value="${last?last.kg:''}"><input type="date" id="wd" value="${today()}" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"></div>
   <div class="chips" style="margin-top:10px"><button id="wSave" class="on">Enregistrer</button></div></div>
   <div class="stats"><div class="stat"><b>${last?last.kg.toFixed(1):'–'}</b><span>dernier (kg)</span></div><div class="stat"><b>${fmtD(d7)}</b><span>sur 7 jours</span></div><div class="stat"><b>${fmtD(d30)}</b><span>sur 30 jours</span></div></div>
+  ${(()=>{const t=S.get('taille',null);const v=last?imc(avg(7)??last.kg):null;
+    if(!t)return `<div class="card"><h3>IMC</h3><div class="lbl">Indique ta taille pour calculer ton IMC</div><div class="wrow"><input type="text" inputmode="numeric" id="tcm" placeholder="Taille en cm (ex. 178)"><div class="chips" style="margin:0"><button id="tSave" class="on">OK</button></div></div></div>`;
+    if(v==null)return `<div class="card"><h3>IMC</h3><div class="lbl">Taille : ${t} cm · ajoute une pesée pour voir ton IMC</div></div>`;
+    const [cat,col]=imcCat(v);
+    return `<div class="card"><h3>IMC</h3><div style="display:flex;align-items:baseline;gap:12px"><b style="font-family:Cinzel,serif;font-size:30px;color:var(--gold2)">${v.toFixed(1).replace('.',',')}</b><span style="color:${col};font-weight:600">${cat}</span></div>
+    ${imcGauge(v)}
+    <div style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.45">Calculé sur ta moyenne des 7 derniers jours, avec ta taille de ${t} cm (<button id="tEdit" style="color:var(--gold);text-decoration:underline;font-size:13px">modifier</button>). L'IMC ne distingue pas le muscle de la graisse : regarde surtout la tendance.</div>
+    <div id="tBox" style="display:none;margin-top:10px" class="wrow"><input type="text" inputmode="numeric" id="tcm" value="${t}"><div class="chips" style="margin:0"><button id="tSave" class="on">OK</button></div></div></div>`})()}
   ${all.length>1?`<div class="card"><h3>Courbe · 90 jours</h3>${wChart(all)}<div style="font-size:13px;color:var(--muted);margin-top:6px">Trait plein : pesées · pointillés : moyenne sur 7 jours${avg(7)!=null?` (${avg(7).toFixed(1)} kg)`:''}</div></div>`:''}
-  ${all.length?`<div class="card wlist"><h3>Pesées</h3>${all.slice().reverse().slice(0,30).map(x=>`<div><span>${new Date(x.jour+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</span><span><b>${x.kg.toFixed(1)} kg</b> &nbsp;<button data-del="${x.id}">✕</button></span></div>`).join('')}</div>`:''}`;
+  ${all.length?`<div class="card wlist"><h3>Pesées</h3>${all.slice().reverse().slice(0,30).map(x=>`<div><span>${new Date(x.jour+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</span><span><b>${x.kg.toFixed(1)} kg</b>${imc(x.kg)?` <small style="color:var(--muted)">· IMC ${imc(x.kg).toFixed(1).replace('.',',')}</small>`:''} &nbsp;<button data-del="${x.id}">✕</button></span></div>`).join('')}</div>`:''}`;
   app.querySelector('#wSave').onclick=()=>{
     const kg=parseFloat(app.querySelector('#kg').value.replace(',','.'));const j=app.querySelector('#wd').value||today();
     if(!(kg>20&&kg<400)){toast('Poids invalide');return}
@@ -337,6 +355,8 @@ function poids(){
     if(e){e.kg=kg;e.supprime=false;e.date=new Date().toISOString()}else arr.push({id,jour:j,kg,date:new Date().toISOString()});
     S.set('poids',arr);toast('Pesée enregistrée');poids();sync();
   };
+  const ts=app.querySelector('#tSave');if(ts)ts.onclick=()=>{const v=parseFloat(app.querySelector('#tcm').value.replace(',','.'));if(!(v>100&&v<230)){toast('Taille invalide (en cm)');return}S.set('taille',Math.round(v));poids();sync()};
+  const te=app.querySelector('#tEdit');if(te)te.onclick=()=>{app.querySelector('#tBox').style.display='flex'};
   app.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const arr=S.get('poids',[]);const e=arr.find(x=>x.id===b.dataset.del);if(e){e.supprime=true;e.date=new Date().toISOString()}S.set('poids',arr);poids();sync()});
 }
 function wChart(all){

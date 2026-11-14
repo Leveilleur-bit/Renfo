@@ -19,6 +19,7 @@ Matériel : élastique, tapis de marche, rameur. Suivi du poids intégré. Thèm
   }],
   "suivi": [{"id": "j2026-11-14", "jour": "2026-11-14", "douleur": 2,
              "gonflement": "aucun|léger|net", "symptomes": ["blocage", "dérobement", "raideur matin"]}],
+  "taille_cm": 178,
   "poids": [{"id": "p2026-11-14", "jour": "2026-11-14", "kg": 83.2, "supprime": false}]
 }
 ```
