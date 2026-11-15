@@ -680,6 +680,10 @@ function settings(){
   <div class="card"><h3>État de la connexion</h3>${syncLine()}
   <div class="chips" style="margin-top:12px"><button id="tConn" class="on">Tester la connexion</button></div>
   <div id="ctest" style="margin-top:10px;font-size:14px;line-height:1.4">${lastTestHtml||(()=>{const c=S.get('connTest',null);return c?`<span style="color:var(--muted)">Dernier test le ${new Date(c.date).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})} : ${c.ok?'✅ tout fonctionnait':'❌ problème détecté'}</span>`:''})()}</div></div>
+  <div class="card"><h3>Coach vocal</h3>
+  <div class="chips" id="vOn" style="margin-top:0"><button data-v="1" class="${S.get('voice',true)?'on':''}">Activé</button><button data-v="0" class="${S.get('voice',true)?'':'on'}">Coupé</button></div>
+  <div class="lbl">Vitesse</div><div class="chips" id="vSp" style="margin-top:0"><button data-v="0" class="${S.get('voiceSlow',false)?'':'on'}">Normale</button><button data-v="1" class="${S.get('voiceSlow',false)?'on':''}">Lente</button><button id="vTest">▶ Tester</button></div>
+  <p style="font-size:13px;color:var(--muted);margin-top:8px">${'speechSynthesis' in window?`Voix : ${frVoice?frVoice.name:'voix française par défaut du téléphone'}.`:'Ton navigateur ne propose pas de synthèse vocale.'} Annonce l'exercice, les séries, « change de côté », « encore 10 secondes ». Le bouton <b>🎵 Rythme guidé</b> compte tes répétitions à voix haute et donne le tempo.</p></div>
   <div class="card"><h3>Profil</h3><div class="lbl" style="margin-top:0">Année de naissance</div>
   <div class="wrow"><input type="text" inputmode="numeric" id="born" placeholder="ex. 1985" value="${S.get('naissance','')??''}"><div class="chips" style="margin:0"><button id="bornSave" class="on">OK</button></div></div>
   <div class="lbl">Prochain rendez-vous chirurgien</div>
@@ -688,6 +692,9 @@ function settings(){
   <div class="card"><h3>Données</h3><p style="font-size:13px;color:var(--muted);line-height:1.5">${S.get('hist',[]).length} séances, ${S.get('suivi',[]).length} jours de suivi et ${S.get('poids',[]).filter(x=>!x.supprime).length} pesées, ${S.get('cuisses',[]).filter(x=>!x.supprime).length} mesures de cuisses et ${S.get('tests',[]).filter(x=>!x.supprime).length} tests enregistrés. Fichier : <b>${GH.repo}/${GH.file}</b>.</p></div>`;
   app.querySelector('#tkSave').onclick=()=>{const v=app.querySelector('#tk').value.trim();if(v&&!v.startsWith('•')){S.set('ghToken',v);S.set('tokDate',Date.now());S.set('connTest',null);settings();testConn()}};
   app.querySelector('#tConn').onclick=testConn;
+  app.querySelectorAll('#vOn button').forEach(b=>b.onclick=()=>{S.set('voice',b.dataset.v==='1');settings()});
+  app.querySelectorAll('#vSp button[data-v]').forEach(b=>b.onclick=()=>{S.set('voiceSlow',b.dataset.v==='1');settings()});
+  app.querySelector('#vTest').onclick=()=>{const was=S.get('voice',true);S.set('voice',true);say('Pont fessier. Série 1 sur 3. 12 répétitions. Monte, serre, descends.',true);S.set('voice',was)};
   app.querySelector('#rdvSave').onclick=()=>{setSc('rdvChir',app.querySelector('#rdvIn').value||null);toast('Rendez-vous enregistré');settings();sync()};
   app.querySelector('#bornSave').onclick=()=>{const y=parseInt(app.querySelector('#born').value,10);const cy=new Date().getFullYear();if(!(y>cy-100&&y<cy-10)){toast('Année invalide');return}setSc('naissance',y);toast('Profil enregistré');settings();sync()};
   app.querySelectorAll('#tkExp button').forEach(b=>b.onclick=()=>{S.set('tokNoExp',b.dataset.v==='1');settings()});
@@ -764,7 +771,48 @@ function load(){
   if(st.kind==='work'&&isTimed(st))running=false;
   endAt=running?(arguments[0]||Date.now())+remain*1000:null;
   if(arguments[0])return;
-  save();draw();loop();
+  stopTempo();save();draw();loop();announce(st);
+}
+/* --- coach vocal --- */
+const TEMPO={quadset:[['Contracte',5],['Relâche',2]],slr:[['Monte',2],['Descends',3]],heelslide:[['Glisse',3],['Retends',3]],
+  pont:[['Monte',2],['Serre',2],['Descends',3]],clam:[['Ouvre',2],['Ferme',2]],abd:[['Lève',2],['Descends',2]],
+  squat:[['Lève-toi',2],['Assieds-toi doucement',3]],tke:[['Tends',1.5],['Tiens',2],['Relâche',2]],lateral:[['Pas',2]],
+  mollet:[['Monte',1.5],['Tiens',1],['Descends',3]],chat:[['Dos rond',3],['Dos creux',3]],birddog:[['Tends',2],['Tiens',3],['Reviens',2]],
+  deadbug:[['Descends',3],['Reviens',2]],rowing:[['Tire',2],['Serre',1],['Reviens',2]],pullapart:[['Écarte',2],['Reviens',2]],
+  pallof:[['Pousse',2],['Tiens',2],['Reviens',2]],superman:[['Lève',1.5],['Tiens',2],['Repose',2]],hinge:[['Penche-toi',3],['Redresse-toi',2]],
+  bascule:[['Plaque le dos',2],['Creuse',2]]};
+const tempoOf=id=>TEMPO[id]||[['Monte',2],['Tiens',1],['Descends',3]];
+let frVoice=null;
+function pickVoice(){try{const v=speechSynthesis.getVoices();frVoice=v.find(x=>x.lang==='fr-FR'&&/google|natural|premium/i.test(x.name))||v.find(x=>x.lang==='fr-FR')||v.find(x=>x.lang&&x.lang.startsWith('fr'))||null}catch(e){}}
+try{pickVoice();speechSynthesis.onvoiceschanged=pickVoice}catch(e){}
+function voiceOn(){return S.get('voice',true)&&'speechSynthesis' in window}
+function say(t,flush){if(!voiceOn()||document.hidden)return;try{if(flush)speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='fr-FR';if(frVoice)u.voice=frVoice;u.rate=S.get('voiceSlow',false)?.85:1.02;u.pitch=.95;speechSynthesis.speak(u)}catch(e){}}
+function hush(){try{speechSynthesis.cancel()}catch(e){}}
+function unitSay(e){const u=e.u||'reps';return u==='reps'?'répétitions':u.startsWith('contractions')?'contractions':u}
+function durSay(v){return v>=60?(v%60?`${Math.floor(v/60)} minute${v>=120?'s':''} ${v%60}`:`${v/60} minute${v>=120?'s':''}`):`${v} secondes`}
+function announce(st){
+  if(st.kind==='rest'){const nw=nextWork();say(`${st.label==='Transition'?'Transition':'Repos'}, ${durSay(st.v)}.${nw?` Ensuite : ${nw.e.n}.`:''}`,true);return}
+  const e=st.e;let t=`${e.n}.`;if(st.sets>1)t+=` Série ${st.set} sur ${st.sets}.`;
+  if(e.t==='time')t+=` ${durSay(st.v)}${st.side?' par côté':''}. Appuie sur démarrer quand tu es prêt.`;
+  else t+=` ${st.v} ${unitSay(e)}${st.side?' par côté':''}.${TEMPO[st.id]||e.z!=='stretch'?' Tu peux lancer le rythme guidé.':''}`;
+  say(t,true);
+}
+let tempoTok=0;
+function stopTempo(){tempoTok++;const b=document.getElementById('tempo');if(b)b.textContent='🎵 Rythme guidé'}
+async function runTempo(){
+  const st=steps[idx];if(!st||st.kind!=='work')return;const my=++tempoTok;const wait=ms=>new Promise(r=>setTimeout(r,ms));const alive=()=>my===tempoTok&&steps[idx]===st;
+  const b=document.getElementById('tempo');if(b)b.textContent='⏹ Arrêter le rythme';
+  const slow=S.get('voiceSlow',false)?1.15:1;const ph=tempoOf(st.id);const sides=st.side?2:1;
+  say('Prêt ? On y va.',true);await wait(1800);
+  for(let sd=1;sd<=sides;sd++){
+    if(sd===2){say('Change de côté.',true);beep(660,.3);await wait(3500)}
+    for(let r=1;r<=st.v;r++){
+      if(!alive())return;say(String(r),true);await wait(700);
+      for(const [w,d] of ph){if(!alive())return;say(w);await wait(d*1000*slow)}
+    }
+  }
+  if(!alive())return;beep(990,.35);say(st.side?'Les deux côtés sont faits. Série terminée.':'Série terminée.',true);await wait(1200);
+  if(!alive())return;tempoTok++;markDone();next();
 }
 /* --- séance en cours : sauvegarde et reprise --- */
 let endAt=null,liveDone=null;
@@ -790,7 +838,9 @@ function loop(){clearInterval(tick);last=Date.now();tick=setInterval(()=>{
   if(!running||!total||!endAt)return;
   const before=Math.ceil(remain);remain=Math.max(0,(endAt-Date.now())/1000);const after=Math.ceil(remain);
   const st=steps[idx];
-  if(st.side&&st.kind==='work'&&before>total/2&&after<=total/2&&after>0){beep(660,.3)}
+  if(st.side&&st.kind==='work'&&before>total/2&&after<=total/2&&after>0){beep(660,.3);say('Change de côté.',true)}
+  if(before>10&&after<=10&&total>=25){if(st.kind==='rest'){const nw=nextWork();say(nw?`Prépare-toi : ${nw.e.n}.`:'Prépare-toi.',true)}else if(!(st.side&&Math.abs(total/2-10)<3))say('Encore 10 secondes.',true)}
+  if(st.kind==='work'&&after<=0&&before>0)say('Terminé.',true);
   if(after!==before&&after<=3&&after>0)beep(660);
   if(remain<=0){beep(990,.35);markDone();next();return}
   updRing();
@@ -815,15 +865,17 @@ function draw(){
     <ul class="cues">${e.c.map(x=>`<li>• ${x}</li>`).join('')}</ul>${e.m?`<div class="men pm">${e.m}</div>`:''}`;
   }
   const timed=isTimed(st);
-  P.innerHTML=`<div class="ptop"><button id="quit">✕ Quitter</button><span style="font-size:13px;color:var(--muted)">${PROGS[curProg].n}</span><button id="prev">‹ Préc.</button></div>
+  P.innerHTML=`<div class="ptop"><button id="quit">✕ Quitter</button><span style="font-size:13px;color:var(--muted)">${PROGS[curProg].n} <button id="vox" style="font-size:18px;margin-left:6px;vertical-align:middle">${S.get('voice',true)?'🔊':'🔇'}</button></span><button id="prev">‹ Préc.</button></div>
   <div class="bar"><div style="width:${pct}%"></div></div>
   <div class="pmain">${body}</div>
-  <div class="pctl">${st.kind==='work'?`<button class="btn" id="hurt" style="${painEx[st.bi]?'background:var(--knee);color:#fff':''}" title="Signaler une douleur">⚠</button>`:''}${timed?`<button class="btn" id="skip">Passer</button><button class="btn main" id="tog">${running?'Pause':(remain<total?'Reprendre':'Démarrer')}</button>`:`<button class="btn main" id="ok">Série faite ✓</button>`}</div>`;
+  <div class="pctl">${st.kind==='work'?`<button class="btn" id="hurt" style="${painEx[st.bi]?'background:var(--knee);color:#fff':''}" title="Signaler une douleur">⚠</button>`:''}${timed?`<button class="btn" id="skip">Passer</button><button class="btn main" id="tog">${running?'Pause':(remain<total?'Reprendre':'Démarrer')}</button>`:`${voiceOn()?`<button class="btn" id="tempo">🎵 Rythme guidé</button>`:''}<button class="btn main" id="ok">Série faite ✓</button>`}</div>`;
   P.querySelector('#quit').onclick=()=>{if(P.querySelector('#quit').dataset.c){Object.keys(track).length?finish(true):stop()}else{P.querySelector('#quit').dataset.c=1;P.querySelector('#quit').textContent='Confirmer ?'}};
-  P.querySelector('#prev').onclick=()=>{if(idx>0){idx--;load()}};
+  P.querySelector('#prev').onclick=()=>{if(idx>0){stopTempo();idx--;load()}};
   P.querySelector('#skip')&&(P.querySelector('#skip').onclick=next);
-  P.querySelector('#ok')&&(P.querySelector('#ok').onclick=()=>{beep(990);markDone();next()});
-  P.querySelector('#tog')&&(P.querySelector('#tog').onclick=()=>{if(running){remain=Math.max(0,(endAt-Date.now())/1000);running=false;endAt=null}else{running=true;endAt=Date.now()+remain*1000}P.querySelector('#tog').textContent=running?'Pause':'Reprendre';save()});
+  P.querySelector('#ok')&&(P.querySelector('#ok').onclick=()=>{stopTempo();beep(990);markDone();next()});
+  const tb=P.querySelector('#tempo');if(tb)tb.onclick=()=>{if(tb.textContent.startsWith('⏹')){stopTempo();hush()}else runTempo()};
+  P.querySelector('#vox').onclick=()=>{const on=!S.get('voice',true);S.set('voice',on);if(!on){stopTempo();hush()}draw();if(on)say('Coach vocal activé.',true)};
+  P.querySelector('#tog')&&(P.querySelector('#tog').onclick=()=>{if(running){remain=Math.max(0,(endAt-Date.now())/1000);running=false;endAt=null}else{running=true;endAt=Date.now()+remain*1000;if(remain>=total-.5&&steps[idx].kind==='work')say("C'est parti.",true)}P.querySelector('#tog').textContent=running?'Pause':'Reprendre';save()});
   bindRate(P);
   const hu=P.querySelector('#hurt');if(hu)hu.onclick=()=>{painEx[st.bi]=!painEx[st.bi];save();hu.style.background=painEx[st.bi]?'var(--knee)':'';hu.style.color=painEx[st.bi]?'#fff':'';toast(painEx[st.bi]?'Douleur notée sur cet exercice':'Douleur retirée')};
   updRing();
@@ -843,6 +895,7 @@ function bindRate(root){root.querySelectorAll('[data-rate]').forEach(b=>b.onclic
 function markDone(){const st=steps[idx];if(st&&st.kind==='work')track[idx]=1;save()}
 function next(){if(idx<steps.length-1){idx++;load()}else finish()}
 function finish(partial){
+  stopTempo();if(!liveDone)say(partial?'Séance arrêtée. Note ta douleur avant d\'enregistrer.':'Séance terminée, bravo ! Note ta douleur et ton ressenti.',true);
   clearInterval(tick);running=false;endAt=null;liveDone={partial:!!partial};save();const dur=Math.round((Date.now()-startT)/1000);let pain=null;
   P.innerHTML=`<div class="ptop"><span></span></div><div class="pmain done"><div class="phase">${partial?'Séance interrompue':'Terminé'}</div><h2>${partial?'Pas grave !':'Bravo !'}</h2><p class="sub">${PROGS[curProg].n} · ${Math.round(dur/60)} min</p>
   ${(()=>{const lw=[...steps].reverse().find(x=>x.kind==='work');return lw&&!rate[lw.bi]?rateBox(lw.bi,lw.e.n):''})()}
@@ -859,7 +912,7 @@ function finish(partial){
     const h=S.get('hist',[]);h.push(rec);S.set('hist',h);stop();tab='home';render();sync();
   };
 }
-function stop(){clearInterval(tick);running=false;endAt=null;S.set('live',null);P.classList.remove('show');try{wl?.release()}catch(e){}}
+function stop(){stopTempo();hush();clearInterval(tick);running=false;endAt=null;S.set('live',null);P.classList.remove('show');try{wl?.release()}catch(e){}}
 applyOverride(S.get('progOverride',null));
 render();
 resume();
