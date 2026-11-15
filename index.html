@@ -384,9 +384,10 @@ function home(){
   app.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{level=+b.dataset.l;S.set('lvl',level);home()});
   app.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>start(b.dataset.p));
 }
+let dailyOpen=false;
 function dailyCard(){
   const d=S.get('suivi',[]).find(x=>x.jour===today())||{};
-  return `<div class="card"><h3>Mon genou et mon dos aujourd'hui</h3>
+  const full=`<div class="card"><h3>Mon genou et mon dos aujourd'hui</h3>
   <div class="lbl">Douleur au repos / dans la journée</div>
   <div class="scale" id="dPain">${[...Array(11)].map((_,i)=>`<button data-v="${i}" class="${d.douleur===i?'on':''}">${i}</button>`).join('')}</div>
   <div class="lbl">Gonflement</div>
@@ -396,17 +397,21 @@ function dailyCard(){
   <div class="lbl" style="margin-top:16px">Dos : douleur</div>
   <div class="scale" id="dBack">${[...Array(11)].map((_,i)=>`<button data-v="${i}" class="${d.dos===i?'on':''}">${i}</button>`).join('')}</div>
   <div class="chips" id="dBz">${['lombaires','haut du dos','descend dans la jambe'].map(v=>`<button data-v="${v}" class="${(d.dos_zone||[]).includes(v)?'on':''}">${v}</button>`).join('')}</div>
-  ${(d.dos_zone||[]).includes('descend dans la jambe')?'<div class="men" style="margin-top:12px">Si la douleur descend sous le genou, ou s’accompagne de fourmillements ou d’une faiblesse de la jambe, parles-en à ton médecin.</div>':''}
-  ${!(d.gonflement==='net'||(d.symptomes||[]).some(x=>x!=='raideur matin'))&&(d.gonflement==='léger'||d.douleur>=4)?'<button class="prog" id="goSoft" style="margin:14px 0 0"><div class="dot" style="background:var(--knee)">✚</div><div><h3>Genou irritable aujourd’hui</h3><p>Remplace ta séance par la version douce (≈ 15 min).</p></div><span class="go">›</span></button>':''}
+  <!--tail-->${(d.dos_zone||[]).includes('descend dans la jambe')?'<div class="men" style="margin-top:12px">Si la douleur descend sous le genou, ou s’accompagne de fourmillements ou d’une faiblesse de la jambe, parles-en à ton médecin.</div>':''}
+  ${!(d.gonflement==='net'||(d.symptomes||[]).some(x=>x!=='raideur matin'))&&(d.gonflement==='léger'||d.douleur>=4)?'<button class="prog" id="goSoft" style="margin:14px 0 0"><div class="dot" style="background:var(--knee)">✚</div><div><h3>Genou irritable aujourd’hui</h3><p>Remplace ta séance par la version douce (≈ '+estMin(PROGS.irritable)+' min).</p></div><span class="go">›</span></button>':''}
   ${d.gonflement==='net'||(d.symptomes||[]).some(x=>x!=='raideur matin')?'<div class="men" style="margin-top:12px">⚠ Pas de séance genou aujourd’hui : préviens ton kiné, surtout en cas de blocage ou de dérobement.</div>':''}
   </div>`;
+  if(dailyOpen||d.douleur==null||!d.gonflement||d.dos==null)return full;
+  const sy=(d.symptomes||[]).concat(d.dos_zone||[]);
+  return `<div class="card"><h3>Mon genou et mon dos aujourd'hui ✓</h3><div style="display:flex;align-items:center;gap:10px"><span style="flex:1;font-size:15px;line-height:1.4">Genou <b>${d.douleur}/10</b> · gonflement <b>${d.gonflement}</b> · dos <b>${d.dos}/10</b>${sy.length?`<br><span style="color:var(--muted);font-size:13px">${sy.join(', ')}</span>`:''}</span><div class="chips" style="margin:0"><button id="dEdit">Modifier</button></div></div>${full.split('<!--tail-->')[1]}`;
 }
 function setDaily(patch){
-  const all=S.get('suivi',[]);let d=all.find(x=>x.jour===today());
+  dailyOpen=true;const all=S.get('suivi',[]);let d=all.find(x=>x.jour===today());
   if(!d){d={id:'j'+today(),jour:today(),date:new Date().toISOString()};all.push(d)}
   Object.assign(d,patch,{date:new Date().toISOString()});S.set('suivi',all);home();clearTimeout(setDaily._t);setDaily._t=setTimeout(()=>sync(),1500);
 }
 function bindDaily(){
+  const de=app.querySelector('#dEdit');if(de)de.onclick=()=>{dailyOpen=true;home()};
   app.querySelectorAll('#dPain button').forEach(b=>b.onclick=()=>setDaily({douleur:+b.dataset.v}));
   app.querySelectorAll('#dSw button').forEach(b=>b.onclick=()=>setDaily({gonflement:b.dataset.v}));
   app.querySelectorAll('#dBack button').forEach(b=>b.onclick=()=>setDaily({dos:+b.dataset.v}));
@@ -752,7 +757,7 @@ function buildSteps(k){
     for(let s=1;s<=n;s++){
       out.push({kind:'work',id,e,set:s,sets:n,v,side:e.side,bi});
       const last=s===n&&bi===its.length-1;
-      if(!last){const nx=its[bi+1];const rs=s<n?rest:(nx&&EX[nx[0]].z==='stretch'?10:30); if(rs>0)out.push({kind:'rest',v:rs,label:s<n?'Repos':'Transition'});}
+      if(!last){const nx=its[bi+1];const rs=s<n?rest:(nx&&EX[nx[0]].z==='stretch'&&e.z==='stretch'?10:30); if(rs>0)out.push({kind:'rest',v:rs,label:s<n?'Repos':'Transition'});}
     }
   });
   return out;
@@ -851,7 +856,7 @@ function draw(){
   const st=steps[idx];const pct=idx/steps.length*100;const nw=nextWork();
   let body;
   if(st.kind==='rest'){
-    const pv=steps[idx-1];const ask=st.label==='Transition'&&pv&&pv.kind==='work';
+    const pv=steps[idx-1];const ask=st.label==='Transition'&&pv&&pv.kind==='work'&&(pv.e.z==='knee'||pv.e.z==='back');
     body=`<div class="rest"><div class="phase">${st.label}</div><div class="pname">Récupère</div>${ring()}${ask?rateBox(pv.bi,pv.e.n):''}${nw?`<div class="next">Ensuite : <b>${nw.e.n}</b>${nw.sets>1?` · série ${nw.set}/${nw.sets}`:''}</div>${window.figureSVG?`<div class="figbox pfig sm">${figureSVG(nw.id)}</div>`:''}`:''}</div>`;
   }else{
     const e=st.e;const timed=e.t==='time';
@@ -898,7 +903,7 @@ function finish(partial){
   stopTempo();if(!liveDone)say(partial?'Séance arrêtée. Note ta douleur avant d\'enregistrer.':'Séance terminée, bravo ! Note ta douleur et ton ressenti.',true);
   clearInterval(tick);running=false;endAt=null;liveDone={partial:!!partial};save();const dur=Math.round((Date.now()-startT)/1000);let pain=null;
   P.innerHTML=`<div class="ptop"><span></span></div><div class="pmain done"><div class="phase">${partial?'Séance interrompue':'Terminé'}</div><h2>${partial?'Pas grave !':'Bravo !'}</h2><p class="sub">${PROGS[curProg].n} · ${Math.round(dur/60)} min</p>
-  ${(()=>{const lw=[...steps].reverse().find(x=>x.kind==='work');return lw&&!rate[lw.bi]?rateBox(lw.bi,lw.e.n):''})()}
+  ${(()=>{const lw=[...steps].reverse().find(x=>x.kind==='work'&&(x.e.z==='knee'||x.e.z==='back')&&Object.keys(track).some(i=>steps[i].bi===x.bi));return lw&&!rate[lw.bi]?rateBox(lw.bi,lw.e.n):''})()}
   <p style="margin-top:24px;font-weight:600">Douleur ressentie pendant la séance ?</p>
   <div class="pain">${[...Array(11)].map((_,i)=>`<button data-v="${i}">${i}</button>`).join('')}</div>
   <p class="sub" style="font-size:13px">0 = aucune · 10 = maximale</p>
