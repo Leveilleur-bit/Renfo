@@ -188,6 +188,8 @@ const EX={
   tapisInc:{n:"Marche inclinée",z:'cardio',eq:"Tapis",t:'time',d:"Marche avec une légère pente : renforce fessiers et mollets sans impact.",c:["Pente 2–5 %, pas plus","Ne t'accroche pas aux barres","Allure où tu peux encore parler"],m:"Pente modérée seulement. Évite les pentes fortes et la marche en descente."},
   rameur:{n:"Rameur course courte",z:'cardio',eq:"Rameur",t:'time',d:"Rameur avec une amplitude de jambes réduite : tu ne reviens pas jusqu'à l'avant du rail.",c:["Arrête le retour avant que les tibias soient verticaux","Résistance basse (damper 1–4)","Jambes → buste → bras, dos droit"],m:"Sur le rameur, la position avant plie le genou bien au-delà de 90°, ce qui charge l'arrière du ménisque. Raccourcis le mouvement. Si ça tire à l'intérieur ou derrière le genou : passe au tapis.",w:"Arrête si douleur à l'intérieur ou à l'arrière du genou."},
   rameurInt:{n:"Rameur intervalles (course courte)",z:'cardio',eq:"Rameur",t:'time',d:"Alterne 1 min tranquille et 1 min un peu plus soutenue, toujours en course courte.",c:["Tibias jamais verticaux à l'avant","Effort modéré, pas d'à-coups","Pousse avec les jambes, pas avec le dos"],m:"Amplitude réduite obligatoire. Remplace par le tapis si le genou proteste.",w:"Arrête si douleur à l'intérieur ou à l'arrière du genou."},
+  rameurFort:{n:"Rameur · effort soutenu",z:'cardio',eq:"Rameur",t:'time',d:"Accélère un peu la cadence et pousse plus fort avec les jambes. Effort où tu peux encore dire quelques mots.",c:["Pousse fort avec les jambes","Course courte : tibias jamais verticaux","Dos droit, épaules basses"],m:"Amplitude réduite obligatoire, même à l'effort. Si ça tire à l'intérieur ou à l'arrière du genou, reste en récupération.",w:"Asthme : garde ton inhalateur à portée de main et ralentis si tu siffles."},
+  rameurCalme:{n:"Rameur · récupération",z:'cardio',eq:"Rameur",t:'time',d:"Continue de ramer tranquillement, sans t'arrêter, pour récupérer.",c:["Cadence lente","Respire profondément","Garde la course courte"],m:"Récupération active : on ne lâche pas la poignée."},
   quadset:{n:"Contraction statique du quadriceps",z:'knee',eq:"Tapis de sol",t:'reps',d:"Assis ou allongé jambe tendue, serviette roulée sous le genou. Écrase la serviette en contractant la cuisse, tiens 5 s.",c:["Tiens 5 secondes","Rotule qui remonte","Orteils vers toi"],m:"Renforce le quadriceps sans charger le ménisque. La base de la phase 1.",side:true,u:"contractions de 5 s"},
   slr:{n:"Élévation jambe tendue",z:'knee',eq:"Tapis de sol",t:'reps',d:"Allongé sur le dos, jambe gauche pliée. Contracte la cuisse droite puis lève la jambe tendue jusqu'à la hauteur du genou opposé.",c:["Genou bien verrouillé","Monte en 2 s, descends en 3 s","Bas du dos posé au sol"],m:"Travaille le quadriceps genou tendu : aucune flexion. Fais les deux jambes.",side:true},
   heelslide:{n:"Glissement du talon",z:'knee',eq:"Tapis de sol",t:'reps',d:"Allongé, chaussette sur sol lisse. Glisse doucement le talon vers les fesses puis retends la jambe.",c:["Uniquement dans la zone confortable","Pas de forçage en fin de flexion","Retends complètement à chaque fois"],m:"Mobilité en douceur, sans charge. Ne force jamais la flexion.",side:true},
@@ -249,6 +251,7 @@ const PROGS={
   cardio:{n:"Cardio doux",z:'cardio',l:"♥",d:"Tapis surtout, rameur en course courte",items:[
     ['tapis',[1,1],[300,300],0],['tapisInc',[1,1],[600,900],0],['rameurInt',[0,4],[60,60],60],['tapis',[1,1],[180,180],0],
     ['etMollet',[1,1],[30,30],0],['etIschio',[1,1],[30,30],0]]},
+  rameurSeul:{n:"Rameur",z:'cardio',l:"⚓",enchaine:true,d:"Échauffement, intervalles et retour au calme, en course courte",items:[]},
   etirJambes:{n:"Étirements jambes",z:'stretch',l:"❦",etir:true,d:"Mollets, ischios, avant de hanche et mobilité du genou, en douceur",items:[
     ['heelslide',[1,1],[10,10],15],['etMollet',[2,2],[30,30],10],['etIschio',[2,2],[30,40],10],['etPsoas',[2,2],[30,40],10],['etAdduct',[2,2],[30,40],10],['genouPoitrine',[1,1],[30,30],0]]},
   etirDos:{n:"Étirements dos",z:'stretch',l:"❧",etir:true,d:"Mobilité et relâchement du bas et du haut du dos",items:[
@@ -350,6 +353,8 @@ function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
 
 /* ---------- Rendu ---------- */
 const app=document.getElementById('app');
+(function(){const it=[['rameur',[1,1],[300,300],0]];for(let i=0;i<6;i++){it.push(['rameurFort',[i<5?1:0,1],[60,90],0],['rameurCalme',[i<5?1:0,1],[60,60],0])}
+  it.push(['rameur',[1,1],[180,180],0],['etIschio',[1,1],[30,30],0],['etMollet',[1,1],[30,30],0]);PROGS.rameurSeul.items=it})();
 const COURTE={
   genou:[['tapis',[1,1],[180,180],0],['quadset',[1,1],[10,10],15],['slr',[2,2],[10,12],30],['pont',[2,2],[12,15],40],['tke',[2,2],[15,15],30],['squat',[2,2],[8,12],50],['equilibre',[1,1],[30,45],0],['etIschio',[1,1],[30,30],0]],
   dos:[['tapis',[1,1],[180,180],0],['chat',[1,1],[10,10],0],['birddog',[2,2],[8,10],30],['deadbug',[2,2],[8,10],30],['planche',[2,2],[20,40],40],['rowing',[2,2],[12,15],40],['pallof',[1,2],[10,10],20],['decharge',[1,1],[60,60],0]],
@@ -374,7 +379,7 @@ function home(){
   ${progCard()}
   <h2>Choisis ta séance</h2>
   <div class="pill-row" style="margin:0 auto 14px"><button data-fmt="courte" class="${fmtCourt()?'on':''}">Courte · ≈ 20 min</button><button data-fmt="longue" class="${fmtCourt()?'':'on'}">Longue</button></div>
-  ${Object.entries(PROGS).filter(([,p])=>!p.douce&&!p.etir).map(([k,p])=>`<button class="prog" data-p="${k}"><div class="dot" style="background:${C[p.z]}">${p.l}</div><div><h3>${p.n}</h3><p>${p.d}<br>≈ ${estMin(p)} min · ${itemsOf(k).filter(x=>x[1][level]).length} exercices</p></div><span class="go">›</span></button>`).join('')}
+  ${Object.entries(PROGS).filter(([,p])=>!p.douce&&!p.etir).map(([k,p])=>`<button class="prog" data-p="${k}"><div class="dot" style="background:${C[p.z]}">${p.l}</div><div><h3>${p.n}</h3><p>${p.d}<br>≈ ${estMin(p)} min · ${p.enchaine?itemsOf(k).filter(x=>x[0]==='rameurFort'&&x[1][level]).length+' intervalles':itemsOf(k).filter(x=>x[1][level]).length+' exercices'}</p></div><span class="go">›</span></button>`).join('')}
   <h2>Étirements</h2>
   ${Object.entries(PROGS).filter(([,p])=>p.etir).map(([k,p])=>`<button class="prog" data-p="${k}"><div class="dot" style="background:${C[p.z]}">${p.l}</div><div><h3>${p.n}</h3><p>${p.d}<br>≈ ${estMin(p)} min</p></div><span class="go">›</span></button>`).join('')}
   <p style="font-size:13px;color:var(--muted);text-align:center;margin:-2px 0 8px">Les séances Genou, Dos, Complète et Cardio finissent déjà par un retour au calme.</p>
@@ -754,7 +759,7 @@ function hist(){
   app.innerHTML=`<h1>Historique</h1>${syncLine()}
   <div class="chips" style="margin:16px 0"><button id="addKine" class="on">+ Séance kiné</button><button id="addOther">+ Autre activité</button><button id="bilanK">📜 Bilan kiné / chirurgien</button></div>
   ${h.length?h.map(x=>`<details class="hist"><summary><div class="hrow"><div><b>${x.manuel&&x.prog==='kine'?'⚕ ':''}${x.programme||x.prog}</b>${x.manuel?'':` · Phase ${x.phase}`}${x.interrompue?' · <span style="color:var(--knee)">interrompue</span>':''}<small>${new Date(x.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</small></div><div style="text-align:right">${Math.round((x.duree_s||0)/60)} min<small>${x.douleur!=null?'douleur '+x.douleur+'/10':''}</small></div></div></summary>
-  <div class="hdet">${(x.exercices||[]).map(e=>`${e.series_faites>=e.series_prevues?'✓':e.series_faites?'◐':'✕'} ${e.nom} — ${e.series_faites}/${e.series_prevues}${e.douleur?' · <span style="color:var(--knee)">douloureux</span>':''}`).join('<br>')}${x.contenu?`<b>Fait :</b> ${x.contenu}`:''}${x.consignes?`<br><b>Consignes :</b> ${x.consignes}`:''}${x.note?`<br><i>« ${x.note} »</i>`:''}${x.manuel?`<br><button data-edit="${x.id}" style="color:var(--gold);text-decoration:underline;font-size:13px;margin-top:6px">Modifier</button>`:''}</div></details>`).join(''):'<div class="empty">Pas encore de séance. Lance-toi !</div>'}`;
+  <div class="hdet">${(x.exercices||[]).map(e=>`${e.series_faites>=e.series_prevues?'✓':e.series_faites?'◐':'✕'} ${e.nom} — ${e.series_faites}/${e.series_prevues}${e.douleur?' · <span style="color:var(--knee)">douloureux</span>':''}`).join('<br>')}${x.contenu?`<b>Fait :</b> ${x.contenu}`:''}${x.consignes?`<br><b>Consignes :</b> ${x.consignes}`:''}${x.distance_m?`<br><b>Rameur :</b> ${x.distance_m} m${x.duree_s?` en ${Math.round(x.duree_s/60)} min`:''}`:''}${x.note?`<br><i>« ${x.note} »</i>`:''}${x.manuel?`<br><button data-edit="${x.id}" style="color:var(--gold);text-decoration:underline;font-size:13px;margin-top:6px">Modifier</button>`:''}</div></details>`).join(''):'<div class="empty">Pas encore de séance. Lance-toi !</div>'}`;
   app.querySelector('#addKine').onclick=()=>manualForm('kine');
   app.querySelector('#addOther').onclick=()=>manualForm('marche');
   app.querySelector('#bilanK').onclick=bilanKine;
@@ -773,7 +778,7 @@ function buildSteps(k){
     for(let s=1;s<=n;s++){
       out.push({kind:'work',id,e,set:s,sets:n,v,side:e.side,bi});
       const last=s===n&&bi===its.length-1;
-      if(!last){const nx=its[bi+1];const rs=s<n?rest:(nx&&EX[nx[0]].z==='stretch'&&e.z==='stretch'?10:30); if(rs>0)out.push({kind:'rest',v:rs,label:s<n?'Repos':'Transition'});}
+      if(!last){const nx=its[bi+1];const rs=(p.enchaine&&nx&&EX[nx[0]].z==='cardio'&&e.z==='cardio')?0:s<n?rest:(nx&&EX[nx[0]].z==='stretch'&&e.z==='stretch'?10:30); if(rs>0)out.push({kind:'rest',v:rs,label:s<n?'Repos':'Transition'});}
     }
   });
   return out;
@@ -790,6 +795,7 @@ function load(){
   total=remain=isTimed(st)?st.v*(st.kind==='work'&&st.side?2:1):0;
   running=isTimed(st)&&st.kind==='rest';
   if(st.kind==='work'&&isTimed(st))running=false;
+  if(PROGS[curProg]&&PROGS[curProg].enchaine&&st.kind==='work'&&st.e.z==='cardio'&&idx>0&&steps[idx-1].kind==='work'&&steps[idx-1].e.z==='cardio')running=true;
   endAt=running?(arguments[0]||Date.now())+remain*1000:null;
   prepAt=(autoOn()&&st.kind==='work'&&isTimed(st)&&st.e.z!=='cardio')?Date.now()+PREP*1000:null;
   if(arguments[0])return;
@@ -815,7 +821,7 @@ function durSay(v){return v>=60?(v%60?`${Math.floor(v/60)} minute${v>=120?'s':''
 function announce(st){
   if(st.kind==='rest'){const nw=nextWork();say(`${st.label==='Transition'?'Transition':'Repos'}, ${durSay(st.v)}.${nw?` Ensuite : ${nw.e.n}.`:''}`,true);return}
   const e=st.e;let t=`${e.n}.`;if(st.sets>1)t+=` Série ${st.set} sur ${st.sets}.`;
-  if(e.t==='time')t+=` ${durSay(st.v)}${st.side?' par côté':''}. ${prepAt?'Mets-toi en place.':'Appuie sur démarrer quand tu es prêt.'}`;
+  if(e.t==='time')t+=` ${durSay(st.v)}${st.side?' par côté':''}.${running?'':prepAt?' Mets-toi en place.':' Appuie sur démarrer quand tu es prêt.'}`;
   else t+=` ${st.v} ${unitSay(e)}${st.side?' par côté':''}.${TEMPO[st.id]||e.z!=='stretch'?' Tu peux lancer le rythme guidé.':''}`;
   say(t,true);
 }
@@ -929,13 +935,14 @@ function finish(partial){
   <p style="margin-top:24px;font-weight:600">Douleur ressentie pendant la séance ?</p>
   <div class="pain">${[...Array(11)].map((_,i)=>`<button data-v="${i}">${i}</button>`).join('')}</div>
   <p class="sub" style="font-size:13px">0 = aucune · 10 = maximale</p>
+  ${steps.some(x=>x.kind==='work'&&/^rameur/.test(x.id))?'<input type="text" inputmode="numeric" id="dist" placeholder="Distance affichée par le rameur (m) — facultatif" style="margin-top:16px;max-width:420px">':''}
   <textarea id="note" placeholder="Une remarque ? (exercice difficile, sensation, consigne du kiné…)" style="margin-top:16px;max-width:420px"></textarea></div>
   <div class="pctl"><button class="btn main" id="save">Enregistrer</button></div>`;
   bindRate(P);
   P.querySelectorAll('.pain [data-v]').forEach(b=>b.onclick=()=>{pain=+b.dataset.v;P.querySelectorAll('.pain [data-v]').forEach(x=>x.classList.toggle('on',x===b))});
   P.querySelector('#save').onclick=()=>{
     const ex={};steps.forEach((st,i)=>{if(st.kind!=='work')return;const k=st.bi;ex[k]=ex[k]||{id:st.id,nom:st.e.n,series_prevues:st.sets,series_faites:0,valeur:st.v,unite:st.e.t==='time'?'s':(st.e.u||'reps'),par_cote:!!st.side};if(track[i])ex[k].series_faites++;if(painEx[k])ex[k].douleur=true;if(rate[k])ex[k].ressenti=rate[k]});
-    const rec={id:uid(),date:new Date(startT).toISOString(),prog:curProg,programme:PROGS[curProg].n,phase:level+1,format:COURTE[curProg]?(fmtCourt()?'courte':'longue'):undefined,duree_s:dur,douleur:pain,interrompue:!!partial,exercices:Object.values(ex).filter(e=>!partial||e.series_faites>0),note:P.querySelector('#note').value.trim()||undefined};
+    const rec={id:uid(),date:new Date(startT).toISOString(),prog:curProg,programme:PROGS[curProg].n,phase:level+1,format:COURTE[curProg]?(fmtCourt()?'courte':'longue'):undefined,duree_s:dur,douleur:pain,interrompue:!!partial,exercices:Object.values(ex).filter(e=>!partial||e.series_faites>0),distance_m:(P.querySelector('#dist')&&parseInt(P.querySelector('#dist').value,10))||undefined,note:P.querySelector('#note').value.trim()||undefined};
     const h=S.get('hist',[]);h.push(rec);S.set('hist',h);stop();tab='home';render();sync();
   };
 }

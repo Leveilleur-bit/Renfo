@@ -135,7 +135,7 @@ Object.assign(FIG,{
             b:{H:[100,68],N:[100,76],P:[100,100],E:[86,88],W:[86,104],E2:[114,88],W2:[114,104],K:[70,104],F:[42,106],K2:[130,104],F2:[158,106],dir:0},arrow:[[124,62],[118,74]],hold:1},
 });
 FIG.tapisInc={props:`<g transform="rotate(-5 100 110)">${treadmill}</g>`,a:FIG.tapis.a,b:FIG.tapis.b,tilt:-5};
-FIG.rameurInt=FIG.rameur;
+FIG.rameurInt=FIG.rameur;FIG.rameurFort=FIG.rameur;FIG.rameurCalme=FIG.rameur;
 
 let uid=0;
 window.figureSVG=function(id,opts){
