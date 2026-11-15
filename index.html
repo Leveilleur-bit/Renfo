@@ -409,17 +409,21 @@ function dailyCard(){
   ${!(d.gonflement==='net'||(d.symptomes||[]).some(x=>x!=='raideur matin'))&&(d.gonflement==='léger'||d.douleur>=4)?'<button class="prog" id="goSoft" style="margin:14px 0 0"><div class="dot" style="background:var(--knee)">✚</div><div><h3>Genou irritable aujourd’hui</h3><p>Remplace ta séance par la version douce (≈ '+estMin(PROGS.irritable)+' min).</p></div><span class="go">›</span></button>':''}
   ${d.gonflement==='net'||(d.symptomes||[]).some(x=>x!=='raideur matin')?'<div class="men" style="margin-top:12px">⚠ Pas de séance genou aujourd’hui : préviens ton kiné, surtout en cas de blocage ou de dérobement.</div>':''}
   </div>`;
-  if(dailyOpen||d.douleur==null||!d.gonflement||d.dos==null)return full;
+  if(dailyOpen||d.douleur==null||!d.gonflement||d.dos==null){
+    if(d.jour){const st=!tok()?'enregistré sur le téléphone (synchro non configurée)':pending()?'enregistré · envoi vers GitHub…':syncState.err?'enregistré sur le téléphone · synchro en échec':'enregistré et synchronisé à '+new Date(syncState.ok).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      return full.replace(/<\/div>`?$/,'')+`<div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><span style="flex:1;font-size:14px;color:${pending()||syncState.err||!tok()?'#e0a85a':'#7fbf6a'}">✓ ${st}</span>${d.douleur!=null&&d.gonflement&&d.dos!=null?'<div class="chips" style="margin:0"><button id="dDone" class="on">Terminé</button></div>':''}</div></div>`}
+    return full}
   const sy=(d.symptomes||[]).concat(d.dos_zone||[]);
   return `<div class="card"><h3>Mon genou et mon dos aujourd'hui ✓</h3><div style="display:flex;align-items:center;gap:10px"><span style="flex:1;font-size:15px;line-height:1.4">Genou <b>${d.douleur}/10</b> · gonflement <b>${d.gonflement}</b> · dos <b>${d.dos}/10</b>${sy.length?`<br><span style="color:var(--muted);font-size:13px">${sy.join(', ')}</span>`:''}</span><div class="chips" style="margin:0"><button id="dEdit">Modifier</button></div></div>${full.split('<!--tail-->')[1]}`;
 }
 function setDaily(patch){
   dailyOpen=true;const all=S.get('suivi',[]);let d=all.find(x=>x.jour===today());
   if(!d){d={id:'j'+today(),jour:today(),date:new Date().toISOString()};all.push(d)}
-  Object.assign(d,patch,{date:new Date().toISOString()});S.set('suivi',all);home();clearTimeout(setDaily._t);setDaily._t=setTimeout(()=>sync(),1500);
+  Object.assign(d,patch,{date:new Date().toISOString()});S.set('suivi',all);home();toast('Enregistré ✓');clearTimeout(setDaily._t);setDaily._t=setTimeout(()=>sync(),1500);
 }
 function bindDaily(){
   const de=app.querySelector('#dEdit');if(de)de.onclick=()=>{dailyOpen=true;home()};
+  const dd=app.querySelector('#dDone');if(dd)dd.onclick=()=>{dailyOpen=false;home()};
   app.querySelectorAll('#dPain button').forEach(b=>b.onclick=()=>setDaily({douleur:+b.dataset.v}));
   app.querySelectorAll('#dSw button').forEach(b=>b.onclick=()=>setDaily({gonflement:b.dataset.v}));
   app.querySelectorAll('#dBack button').forEach(b=>b.onclick=()=>setDaily({dos:+b.dataset.v}));
