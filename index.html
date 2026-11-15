@@ -689,6 +689,9 @@ function settings(){
   <div class="chips" id="vOn" style="margin-top:0"><button data-v="1" class="${S.get('voice',true)?'on':''}">Activé</button><button data-v="0" class="${S.get('voice',true)?'':'on'}">Coupé</button></div>
   <div class="lbl">Vitesse</div><div class="chips" id="vSp" style="margin-top:0"><button data-v="0" class="${S.get('voiceSlow',false)?'':'on'}">Normale</button><button data-v="1" class="${S.get('voiceSlow',false)?'on':''}">Lente</button><button id="vTest">▶ Tester</button></div>
   <p style="font-size:13px;color:var(--muted);margin-top:8px">${'speechSynthesis' in window?`Voix : ${frVoice?frVoice.name:'voix française par défaut du téléphone'}.`:'Ton navigateur ne propose pas de synthèse vocale.'} Annonce l'exercice, les séries, « change de côté », « encore 10 secondes ». Le bouton <b>🎵 Rythme guidé</b> compte tes répétitions à voix haute et donne le tempo.</p></div>
+  <div class="card"><h3>Enchaînement automatique</h3>
+  <div class="chips" id="aOn" style="margin-top:0"><button data-v="1" class="${autoOn()?'on':''}">Activé</button><button data-v="0" class="${autoOn()?'':'on'}">Coupé</button></div>
+  <p style="font-size:13px;color:var(--muted);margin-top:8px">Les exercices chronométrés (gainage, chaise au mur, équilibre, étirements) démarrent seuls après un décompte de ${PREP} secondes. Touche le bouton pour partir tout de suite, ou « Pause » pour prendre ton temps. La marche et le rameur restent manuels.</p></div>
   <div class="card"><h3>Profil</h3><div class="lbl" style="margin-top:0">Année de naissance</div>
   <div class="wrow"><input type="text" inputmode="numeric" id="born" placeholder="ex. 1985" value="${S.get('naissance','')??''}"><div class="chips" style="margin:0"><button id="bornSave" class="on">OK</button></div></div>
   <div class="lbl">Prochain rendez-vous chirurgien</div>
@@ -697,6 +700,7 @@ function settings(){
   <div class="card"><h3>Données</h3><p style="font-size:13px;color:var(--muted);line-height:1.5">${S.get('hist',[]).length} séances, ${S.get('suivi',[]).length} jours de suivi et ${S.get('poids',[]).filter(x=>!x.supprime).length} pesées, ${S.get('cuisses',[]).filter(x=>!x.supprime).length} mesures de cuisses et ${S.get('tests',[]).filter(x=>!x.supprime).length} tests enregistrés. Fichier : <b>${GH.repo}/${GH.file}</b>.</p></div>`;
   app.querySelector('#tkSave').onclick=()=>{const v=app.querySelector('#tk').value.trim();if(v&&!v.startsWith('•')){S.set('ghToken',v);S.set('tokDate',Date.now());S.set('connTest',null);settings();testConn()}};
   app.querySelector('#tConn').onclick=testConn;
+  app.querySelectorAll('#aOn button').forEach(b=>b.onclick=()=>{S.set('auto',b.dataset.v==='1');settings()});
   app.querySelectorAll('#vOn button').forEach(b=>b.onclick=()=>{S.set('voice',b.dataset.v==='1');settings()});
   app.querySelectorAll('#vSp button[data-v]').forEach(b=>b.onclick=()=>{S.set('voiceSlow',b.dataset.v==='1');settings()});
   app.querySelector('#vTest').onclick=()=>{const was=S.get('voice',true);S.set('voice',true);say('Pont fessier. Série 1 sur 3. 12 répétitions. Monte, serre, descends.',true);S.set('voice',was)};
@@ -775,6 +779,7 @@ function load(){
   running=isTimed(st)&&st.kind==='rest';
   if(st.kind==='work'&&isTimed(st))running=false;
   endAt=running?(arguments[0]||Date.now())+remain*1000:null;
+  prepAt=(autoOn()&&st.kind==='work'&&isTimed(st)&&st.e.z!=='cardio')?Date.now()+PREP*1000:null;
   if(arguments[0])return;
   stopTempo();save();draw();loop();announce(st);
 }
@@ -798,7 +803,7 @@ function durSay(v){return v>=60?(v%60?`${Math.floor(v/60)} minute${v>=120?'s':''
 function announce(st){
   if(st.kind==='rest'){const nw=nextWork();say(`${st.label==='Transition'?'Transition':'Repos'}, ${durSay(st.v)}.${nw?` Ensuite : ${nw.e.n}.`:''}`,true);return}
   const e=st.e;let t=`${e.n}.`;if(st.sets>1)t+=` Série ${st.set} sur ${st.sets}.`;
-  if(e.t==='time')t+=` ${durSay(st.v)}${st.side?' par côté':''}. Appuie sur démarrer quand tu es prêt.`;
+  if(e.t==='time')t+=` ${durSay(st.v)}${st.side?' par côté':''}. ${prepAt?'Mets-toi en place.':'Appuie sur démarrer quand tu es prêt.'}`;
   else t+=` ${st.v} ${unitSay(e)}${st.side?' par côté':''}.${TEMPO[st.id]||e.z!=='stretch'?' Tu peux lancer le rythme guidé.':''}`;
   say(t,true);
 }
@@ -820,8 +825,9 @@ async function runTempo(){
   if(!alive())return;tempoTok++;markDone();next();
 }
 /* --- séance en cours : sauvegarde et reprise --- */
-let endAt=null,liveDone=null;
-function save(){S.set('live',{prog:curProg,lvl:level,idx,track,painEx,rate,startT,running,endAt,remain,total,done:liveDone,steps:steps.map(x=>Object.assign({},x,{e:undefined}))})}
+let endAt=null,liveDone=null,prepAt=null;const PREP=8;
+function autoOn(){return S.get('auto',true)}
+function save(){S.set('live',{prepAt,prog:curProg,lvl:level,idx,track,painEx,rate,startT,running,endAt,remain,total,done:liveDone,steps:steps.map(x=>Object.assign({},x,{e:undefined}))})}
 function catchUp(){ // rattrape le temps écoulé hors de l'appli
   let n=0;
   while(running&&endAt&&Date.now()>=endAt&&n<200){n++;const t=endAt;const st=steps[idx];if(st.kind==='work')track[idx]=1;
@@ -832,7 +838,7 @@ function catchUp(){ // rattrape le temps écoulé hors de l'appli
 function resume(){
   const L=S.get('live',null);if(!L||!L.steps||!PROGS[L.prog]||Date.now()-L.startT>12*3600e3){S.set('live',null);return false}
   curProg=L.prog;steps=L.steps.map(x=>x.kind==='work'?Object.assign({},x,{e:EX[x.id]}):x);if(steps.some(x=>x.kind==='work'&&!x.e)){S.set('live',null);return false}
-  idx=L.idx;track=L.track||{};painEx=L.painEx||{};rate=L.rate||{};startT=L.startT;running=L.running;endAt=L.endAt;remain=L.remain;total=L.total;liveDone=L.done;
+  idx=L.idx;track=L.track||{};painEx=L.painEx||{};rate=L.rate||{};startT=L.startT;running=L.running;endAt=L.endAt;remain=L.remain;total=L.total;liveDone=L.done;prepAt=L.prepAt&&!L.running?Date.now()+PREP*1000:null;
   P.classList.add('show');
   if(liveDone){finish(liveDone.partial);return true}
   catchUp();save();
@@ -840,6 +846,10 @@ function resume(){
   draw();loop();return true;
 }
 function loop(){clearInterval(tick);last=Date.now();tick=setInterval(()=>{
+  if(prepAt&&!running){const left=Math.ceil((prepAt-Date.now())/1000);const tb=document.getElementById('tog');
+    if(left!==loop._l){loop._l=left;if(left<=3&&left>0)beep(660,.1);if(tb&&left>0)tb.textContent=`Départ dans ${left} s`}
+    if(left<=0){prepAt=null;running=true;endAt=Date.now()+remain*1000;beep(880,.25);say("C'est parti.",true);if(tb)tb.textContent='Pause';save()}
+    return}
   if(!running||!total||!endAt)return;
   const before=Math.ceil(remain);remain=Math.max(0,(endAt-Date.now())/1000);const after=Math.ceil(remain);
   const st=steps[idx];
@@ -880,7 +890,7 @@ function draw(){
   P.querySelector('#ok')&&(P.querySelector('#ok').onclick=()=>{stopTempo();beep(990);markDone();next()});
   const tb=P.querySelector('#tempo');if(tb)tb.onclick=()=>{if(tb.textContent.startsWith('⏹')){stopTempo();hush()}else runTempo()};
   P.querySelector('#vox').onclick=()=>{const on=!S.get('voice',true);S.set('voice',on);if(!on){stopTempo();hush()}draw();if(on)say('Coach vocal activé.',true)};
-  P.querySelector('#tog')&&(P.querySelector('#tog').onclick=()=>{if(running){remain=Math.max(0,(endAt-Date.now())/1000);running=false;endAt=null}else{running=true;endAt=Date.now()+remain*1000;if(remain>=total-.5&&steps[idx].kind==='work')say("C'est parti.",true)}P.querySelector('#tog').textContent=running?'Pause':'Reprendre';save()});
+  P.querySelector('#tog')&&(P.querySelector('#tog').onclick=()=>{prepAt=null;if(running){remain=Math.max(0,(endAt-Date.now())/1000);running=false;endAt=null}else{running=true;endAt=Date.now()+remain*1000;if(remain>=total-.5&&steps[idx].kind==='work')say("C'est parti.",true)}P.querySelector('#tog').textContent=running?'Pause':'Reprendre';save()});
   bindRate(P);
   const hu=P.querySelector('#hurt');if(hu)hu.onclick=()=>{painEx[st.bi]=!painEx[st.bi];save();hu.style.background=painEx[st.bi]?'var(--knee)':'';hu.style.color=painEx[st.bi]?'#fff':'';toast(painEx[st.bi]?'Douleur notée sur cet exercice':'Douleur retirée')};
   updRing();
@@ -901,7 +911,7 @@ function markDone(){const st=steps[idx];if(st&&st.kind==='work')track[idx]=1;sav
 function next(){if(idx<steps.length-1){idx++;load()}else finish()}
 function finish(partial){
   stopTempo();if(!liveDone)say(partial?'Séance arrêtée. Note ta douleur avant d\'enregistrer.':'Séance terminée, bravo ! Note ta douleur et ton ressenti.',true);
-  clearInterval(tick);running=false;endAt=null;liveDone={partial:!!partial};save();const dur=Math.round((Date.now()-startT)/1000);let pain=null;
+  clearInterval(tick);running=false;endAt=null;prepAt=null;liveDone={partial:!!partial};save();const dur=Math.round((Date.now()-startT)/1000);let pain=null;
   P.innerHTML=`<div class="ptop"><span></span></div><div class="pmain done"><div class="phase">${partial?'Séance interrompue':'Terminé'}</div><h2>${partial?'Pas grave !':'Bravo !'}</h2><p class="sub">${PROGS[curProg].n} · ${Math.round(dur/60)} min</p>
   ${(()=>{const lw=[...steps].reverse().find(x=>x.kind==='work'&&(x.e.z==='knee'||x.e.z==='back')&&Object.keys(track).some(i=>steps[i].bi===x.bi));return lw&&!rate[lw.bi]?rateBox(lw.bi,lw.e.n):''})()}
   <p style="margin-top:24px;font-weight:600">Douleur ressentie pendant la séance ?</p>
@@ -917,7 +927,7 @@ function finish(partial){
     const h=S.get('hist',[]);h.push(rec);S.set('hist',h);stop();tab='home';render();sync();
   };
 }
-function stop(){stopTempo();hush();clearInterval(tick);running=false;endAt=null;S.set('live',null);P.classList.remove('show');try{wl?.release()}catch(e){}}
+function stop(){prepAt=null;stopTempo();hush();clearInterval(tick);running=false;endAt=null;S.set('live',null);P.classList.remove('show');try{wl?.release()}catch(e){}}
 applyOverride(S.get('progOverride',null));
 render();
 resume();
